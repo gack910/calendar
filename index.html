@@ -33,7 +33,7 @@
       font-family: var(--font);
       color: var(--text);
       background: var(--bg);
-      overflow: hden;
+      overflow: hidden;
     }
 
     /* ── AUTH OVERLAY ── */
@@ -44,7 +44,7 @@
     }
     .auth-card {
       text-align: center; padding: 40px 48px;
-      border: 1px sol var(--border); border-radius: 12px;
+      border: 1px solid var(--border); border-radius: 12px;
       max-width: 360px; width: 90%;
     }
     .auth-card h1 { font-size: 22px; font-weight: 500; margin-bottom: 8px; }
@@ -286,6 +286,15 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    .color-swatch {
+      width: 24px; height: 24px; border-radius: 50%;
+      cursor: pointer; border: 2px solid transparent;
+      transition: transform .1s, border-color .1s;
+      flex-shrink: 0;
+    }
+    .color-swatch:hover { transform: scale(1.15); }
+    .color-swatch.selected { border-color: #202124; transform: scale(1.15); }
+
     /* ── EVENT FORM MODAL ── */
     #form-modal-bg {
       display: none; position: fixed; inset: 0;
@@ -467,6 +476,10 @@
     <div class="form-row" id="form-date-section" style="display:none">
       <label>日付</label>
       <input type="date" id="form-date">
+    </div>
+    <div class="form-row">
+      <label>色</label>
+      <div id="form-color-picker" style="display:flex;gap:8px;flex-wrap:wrap;padding:4px 0"></div>
     </div>
     <div class="form-row">
       <label>場所</label>
@@ -925,6 +938,42 @@ async function loadDay() {
   scroll.scrollTop = 8 * 48;
 }
 
+// ── カラーピッカー ──
+const GCAL_COLORS = [
+  {id:'',    bg:'#4285f4', label:'デフォルト'},
+  {id:'1',   bg:'#a4bdfc', label:'ラベンダー'},
+  {id:'2',   bg:'#7ae7bf', label:'セージ'},
+  {id:'3',   bg:'#dbadff', label:'グレープ'},
+  {id:'4',   bg:'#ff887c', label:'フラミンゴ'},
+  {id:'5',   bg:'#fbd75b', label:'バナナ'},
+  {id:'6',   bg:'#ffb878', label:'タンジェリン'},
+  {id:'7',   bg:'#46d6db', label:'ピーコック'},
+  {id:'8',   bg:'#e1e1e1', label:'グラファイト'},
+  {id:'9',   bg:'#5484ed', label:'ブルーベリー'},
+  {id:'10',  bg:'#51b749', label:'セージグリーン'},
+  {id:'11',  bg:'#dc2127', label:'トマト'},
+];
+
+let selectedColorId = '';
+
+function initColorPicker(currentColorId = '') {
+  selectedColorId = currentColorId;
+  const container = document.getElementById('form-color-picker');
+  container.innerHTML = '';
+  GCAL_COLORS.forEach(c => {
+    const sw = document.createElement('div');
+    sw.className = 'color-swatch' + (c.id === selectedColorId ? ' selected' : '');
+    sw.style.background = c.bg;
+    sw.title = c.label;
+    sw.addEventListener('click', () => {
+      selectedColorId = c.id;
+      container.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+      sw.classList.add('selected');
+    });
+    container.appendChild(sw);
+  });
+}
+
 // ── 詳細モーダル ──
 let currentEvent = null;
 
@@ -1011,6 +1060,7 @@ function openFormModal(ev = null, defaultDate = null) {
   }
   document.getElementById('form-modal-bg').classList.add('open');
   document.getElementById('form-title').focus();
+  initColorPicker(ev ? (ev.colorId || '') : '');
 }
 
 function toggleAlldayFields(isAllDay) {
@@ -1058,6 +1108,7 @@ document.getElementById('form-save-btn').addEventListener('click', async () => {
     end: endObj,
     location: document.getElementById('form-location').value.trim() || undefined,
     description: document.getElementById('form-desc').value.trim() || undefined,
+    colorId: selectedColorId || undefined,
   };
 
   try {
