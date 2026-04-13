@@ -18,7 +18,7 @@
       --header-h: 52px;
       --dow-h: 28px;
       --col-exp: 12px;
-      --chip-h: 17px;
+      --chip-h: 15px;
       --collapsed-min: 32px;
       --expanded-h: 200px;
       --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -27,6 +27,7 @@
       --blue-text: #1558b0;
       --text: #202124;
       --text-sub: #70757a;
+      --text-other: #c0c0c0;
       --border: #dadce0;
       --bg: #fff;
       --bg2: #f8f9fa;
@@ -36,19 +37,17 @@
     }
 
     html, body {
-      height: 100%;
-      height: 100dvh;
+      height: 100%; height: 100dvh;
       font-family: var(--font);
       color: var(--text);
       background: var(--bg);
       overflow: hidden;
     }
 
-    /* ── APP SHELL ── */
     #app { display: none; flex-direction: column; height: 100vh; height: 100dvh; }
     #app.visible { display: flex; }
 
-    /* ── AUTH OVERLAY ── */
+    /* ── AUTH ── */
     #auth-overlay {
       position: fixed; inset: 0;
       display: flex; align-items: center; justify-content: center;
@@ -66,12 +65,11 @@
       padding: 10px 20px; border: 1px solid var(--border);
       border-radius: 4px; background: #fff; cursor: pointer;
       font-size: 14px; font-weight: 500; color: var(--text);
-      transition: background .15s, box-shadow .15s;
+      transition: background .15s;
     }
-    .google-btn:hover { background: var(--bg2); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
     .google-btn svg { width: 18px; height: 18px; }
 
-    /* ── TOP HEADER ── */
+    /* ── HEADER ── */
     .top-header {
       height: var(--header-h);
       display: flex; align-items: center;
@@ -107,7 +105,6 @@
       transition: background .15s;
     }
     .view-btn:first-child { border-left: none; }
-    .view-btn:hover { background: var(--bg2); }
     .view-btn.active { background: var(--blue-light); color: var(--blue-text); font-weight: 500; }
     .user-btn {
       width: 32px; height: 32px; border-radius: 50%;
@@ -115,13 +112,10 @@
       border: none; cursor: pointer; font-size: 13px; font-weight: 500;
     }
 
-    /* ── CALENDAR AREA ── */
-    #cal-area {
-      flex: 1; overflow: hidden;
-      display: flex; flex-direction: column;
-    }
+    /* ── CAL AREA ── */
+    #cal-area { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
 
-    /* ── MONTH VIEW ── */
+    /* ── MONTH ── */
     #month-view { display: flex; flex-direction: column; height: 100%; }
     .dow-row {
       display: grid; grid-template-columns: var(--col-exp) repeat(7, 1fr);
@@ -139,8 +133,7 @@
     .week-row {
       display: grid; grid-template-columns: var(--col-exp) repeat(7, 1fr);
       border-bottom: 1px solid var(--border);
-      transition: height .2s ease;
-      overflow: hidden;
+      transition: height .2s ease; overflow: hidden;
     }
     .week-row:last-child { border-bottom: none; }
     .exp-col {
@@ -149,17 +142,13 @@
       justify-content: center; padding-top: 6px;
     }
     .exp-col:hover { background: var(--bg2); }
-    .exp-icon {
-      width: 8px; height: 8px;
-      transition: transform .2s;
-      color: var(--text-sub);
-    }
+    .exp-icon { width: 8px; height: 8px; transition: transform .2s; color: var(--text-sub); }
     .week-row.expanded .exp-icon { transform: rotate(90deg); }
     .week-row.expanded .exp-col { background: var(--blue-light); }
     .week-row.expanded .exp-icon { color: var(--blue-text); }
     .day-cell {
       border-right: 1px solid var(--border);
-      padding: 3px 4px; overflow: hidden;
+      padding: 2px 3px; overflow: hidden;
       display: flex; flex-direction: column;
     }
     .day-cell:last-child { border-right: none; }
@@ -170,28 +159,44 @@
       font-size: 12px; font-weight: 500;
       width: 22px; height: 22px;
       display: flex; align-items: center; justify-content: center;
-      border-radius: 50%; margin-bottom: 2px; cursor: pointer;
+      border-radius: 50%; margin-bottom: 1px; cursor: pointer;
       flex-shrink: 0; align-self: flex-start;
       transition: background .15s;
     }
     .day-num:hover { background: var(--bg2); }
     .day-num.today { background: var(--today-bg); color: var(--today-text); }
-    .day-num.other-month { color: #ccc; }
+    .day-num.other-month { color: var(--text-other); }
+
+    /* ── チップ（通常） ── */
     .chip {
-      font-size: 11px; padding: 1px 5px;
+      font-size: 10px; padding: 1px 4px;
       border-radius: 3px; margin-bottom: 1px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      white-space: nowrap; overflow: hidden;
+      text-overflow: clip; /* ← 「…」なし */
       flex-shrink: 0; cursor: pointer;
       transition: filter .1s;
     }
-    .chip:hover { filter: brightness(.95); }
+    .chip:hover { filter: brightness(.93); }
+
+    /* ── 複数日にまたがる帯 ── */
+    .chip-span {
+      font-size: 10px; padding: 1px 4px;
+      border-radius: 3px; margin-bottom: 1px;
+      white-space: nowrap; overflow: hidden;
+      text-overflow: clip;
+      flex-shrink: 0; cursor: pointer;
+    }
+    /* 帯の左右端をそれぞれ開く */
+    .chip-span.span-start { border-radius: 3px 0 0 3px; }
+    .chip-span.span-mid   { border-radius: 0; margin-left: -3px; margin-right: -3px; padding-left: 2px; }
+    .chip-span.span-end   { border-radius: 0 3px 3px 0; margin-left: -3px; padding-left: 2px; }
+
     .more-badge {
-      font-size: 11px; color: var(--text-sub);
+      font-size: 10px; color: var(--text-sub);
       padding: 1px 3px; cursor: pointer; flex-shrink: 0;
     }
-    .more-badge:hover { color: var(--text); }
 
-    /* ── WEEK VIEW ── */
+    /* ── WEEK ── */
     #week-view { display: none; flex-direction: column; height: 100%; }
     .wv-head {
       display: grid; grid-template-columns: 52px repeat(7, 1fr);
@@ -215,10 +220,7 @@
     .wv-scroll { flex: 1; overflow-y: auto; }
     .wv-scroll::-webkit-scrollbar { width: 6px; }
     .wv-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-    .wv-grid {
-      display: grid; grid-template-columns: 52px repeat(7, 1fr);
-      position: relative;
-    }
+    .wv-grid { display: grid; grid-template-columns: 52px repeat(7, 1fr); position: relative; }
     .wv-time {
       font-size: 10px; color: var(--text-sub);
       text-align: right; padding-right: 8px;
@@ -232,11 +234,12 @@
     .wv-slot:last-child { border-right: none; }
     .wv-event {
       position: absolute; left: 2px; right: 2px;
-      border-radius: 3px; font-size: 11px; padding: 2px 4px;
-      overflow: hidden; cursor: pointer; z-index: 1;
+      border-radius: 3px; font-size: 10px; padding: 2px 4px;
+      overflow: hidden; text-overflow: clip;
+      white-space: nowrap; cursor: pointer; z-index: 1;
     }
 
-    /* ── DAY VIEW ── */
+    /* ── DAY ── */
     #day-view { display: none; flex-direction: column; height: 100%; }
     .dv-scroll { flex: 1; overflow-y: auto; }
     .dv-scroll::-webkit-scrollbar { width: 6px; }
@@ -251,13 +254,16 @@
     .dv-slot { height: 48px; border-bottom: 1px solid var(--border); position: relative; }
     .dv-event {
       position: absolute; left: 6px; right: 6px;
-      border-radius: 4px; font-size: 12px; padding: 4px 8px;
+      border-radius: 4px; font-size: 11px; padding: 4px 8px;
       overflow: hidden; cursor: pointer;
     }
-    .dv-event-title { font-weight: 500; }
-    .dv-event-time { font-size: 11px; opacity: .8; margin-top: 1px; }
+    .dv-event-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: clip; }
+    .dv-event-time { font-size: 10px; opacity: .8; margin-top: 1px; }
 
-    /* ── EVENT MODAL ── */
+    /* ── SWIPE ── */
+    #cal-area { touch-action: pan-y; }
+
+    /* ── DETAIL MODAL ── */
     #modal-bg {
       display: none; position: fixed; inset: 0;
       background: rgba(0,0,0,.3); z-index: 50;
@@ -272,38 +278,8 @@
     .modal h3 { font-size: 18px; font-weight: 500; margin-bottom: 12px; }
     .modal-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 10px; font-size: 14px; }
     .modal-label { color: var(--text-sub); min-width: 48px; padding-top: 1px; }
-    .modal-close {
-      margin-top: 16px; width: 100%; padding: 8px;
-      border: 1px solid var(--border); border-radius: var(--radius);
-      background: none; cursor: pointer; font-size: 14px;
-      transition: background .15s;
-    }
-    .modal-close:hover { background: var(--bg2); }
 
-    /* ── LOADING ── */
-    .loading {
-      display: flex; align-items: center; justify-content: center;
-      height: 100%; color: var(--text-sub); font-size: 14px; gap: 8px;
-    }
-    .spinner {
-      width: 18px; height: 18px;
-      border: 2px solid var(--border);
-      border-top-color: var(--blue);
-      border-radius: 50%;
-      animation: spin .7s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .color-swatch {
-      width: 24px; height: 24px; border-radius: 50%;
-      cursor: pointer; border: 2px solid transparent;
-      transition: transform .1s, border-color .1s;
-      flex-shrink: 0;
-    }
-    .color-swatch:hover { transform: scale(1.15); }
-    .color-swatch.selected { border-color: #202124; transform: scale(1.15); }
-
-    /* ── EVENT FORM MODAL ── */
+    /* ── FORM MODAL ── */
     #form-modal-bg {
       display: none; position: fixed; inset: 0;
       background: rgba(0,0,0,.3); z-index: 60;
@@ -314,18 +290,18 @@
       background: #fff; border-radius: 12px;
       padding: 24px; max-width: 440px; width: 92%;
       box-shadow: 0 8px 32px rgba(0,0,0,.2);
+      max-height: 90dvh; overflow-y: auto;
     }
     .form-modal h3 { font-size: 17px; font-weight: 500; margin-bottom: 18px; }
     .form-row { margin-bottom: 14px; }
     .form-row label { display: block; font-size: 12px; color: var(--text-sub); margin-bottom: 4px; }
-    .form-row input, .form-row textarea {
+    .form-row input, .form-row textarea, .form-row select {
       width: 100%; padding: 8px 10px;
       border: 1px solid var(--border); border-radius: var(--radius);
       font-size: 14px; font-family: var(--font); color: var(--text);
-      background: var(--bg);
-      transition: border-color .15s;
+      background: var(--bg); transition: border-color .15s;
     }
-    .form-row input:focus, .form-row textarea:focus {
+    .form-row input:focus, .form-row textarea:focus, .form-row select:focus {
       outline: none; border-color: var(--blue);
     }
     .form-row textarea { resize: vertical; min-height: 72px; }
@@ -339,31 +315,47 @@
     .form-time-row input:focus { outline: none; border-color: var(--blue); }
     .form-allday { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 14px; cursor: pointer; }
     .form-allday input { width: auto; margin: 0; cursor: pointer; }
-    .form-actions { display: flex; gap: 8px; margin-top: 18px; }
+    .form-actions { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
     .btn-primary {
       flex: 1; padding: 9px;
       background: var(--blue); color: #fff;
       border: none; border-radius: var(--radius);
-      font-size: 14px; cursor: pointer;
-      transition: background .15s;
+      font-size: 14px; cursor: pointer; transition: background .15s;
     }
     .btn-primary:hover { background: #1557b0; }
     .btn-secondary {
       padding: 9px 16px;
       background: none; color: var(--text-sub);
       border: 1px solid var(--border); border-radius: var(--radius);
-      font-size: 14px; cursor: pointer;
-      transition: background .15s;
+      font-size: 14px; cursor: pointer; transition: background .15s;
     }
     .btn-secondary:hover { background: var(--bg2); }
     .btn-danger {
       padding: 9px 16px;
       background: none; color: #c5221f;
       border: 1px solid #f5c6c6; border-radius: var(--radius);
-      font-size: 14px; cursor: pointer;
-      transition: background .15s;
+      font-size: 14px; cursor: pointer; transition: background .15s;
     }
     .btn-danger:hover { background: #fce8e6; }
+    .color-swatch {
+      width: 24px; height: 24px; border-radius: 50%;
+      cursor: pointer; border: 2px solid transparent;
+      transition: transform .1s, border-color .1s; flex-shrink: 0;
+    }
+    .color-swatch:hover { transform: scale(1.15); }
+    .color-swatch.selected { border-color: #202124; transform: scale(1.15); }
+
+    /* ── LOADING ── */
+    .loading {
+      display: flex; align-items: center; justify-content: center;
+      height: 100%; color: var(--text-sub); font-size: 14px; gap: 8px;
+    }
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border); border-top-color: var(--blue);
+      border-radius: 50%; animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ── RESPONSIVE ── */
     @media (max-width: 600px) {
@@ -376,7 +368,6 @@
 </head>
 <body>
 
-<!-- 認証前画面 -->
 <div id="auth-overlay">
   <div class="auth-card">
     <h1>マイカレンダー</h1>
@@ -393,7 +384,6 @@
   </div>
 </div>
 
-<!-- アプリ本体 -->
 <div id="app">
   <div class="top-header">
     <div class="nav-group">
@@ -411,7 +401,6 @@
   </div>
 
   <div id="cal-area">
-    <!-- 月表示 -->
     <div id="month-view">
       <div class="dow-row">
         <div class="dow-spacer"></div>
@@ -424,16 +413,12 @@
         <div class="loading"><div class="spinner"></div>読み込み中...</div>
       </div>
     </div>
-
-    <!-- 週表示 -->
     <div id="week-view">
       <div class="wv-head" id="wv-head"></div>
       <div class="wv-scroll" id="wv-scroll">
         <div class="loading"><div class="spinner"></div>読み込み中...</div>
       </div>
     </div>
-
-    <!-- 日表示 -->
     <div id="day-view">
       <div class="dv-scroll" id="dv-scroll">
         <div class="loading"><div class="spinner"></div>読み込み中...</div>
@@ -442,7 +427,7 @@
   </div>
 </div>
 
-<!-- イベント詳細モーダル -->
+<!-- 詳細モーダル -->
 <div id="modal-bg">
   <div class="modal">
     <h3 id="modal-title"></h3>
@@ -453,15 +438,16 @@
     <div class="modal-row" id="modal-desc-row" style="display:none">
       <span class="modal-label">メモ</span><span id="modal-desc"></span>
     </div>
-    <div style="display:flex;gap:8px;margin-top:16px">
+    <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
       <button class="btn-primary" id="modal-edit-btn">編集</button>
+      <button class="btn-secondary" id="modal-copy-btn">複製</button>
       <button class="btn-danger" id="modal-delete-btn">削除</button>
       <button class="btn-secondary" id="modal-close">閉じる</button>
     </div>
   </div>
 </div>
 
-<!-- 予定追加・編集フォームモーダル -->
+<!-- 追加・編集フォーム -->
 <div id="form-modal-bg">
   <div class="form-modal">
     <h3 id="form-modal-title">予定を追加</h3>
@@ -473,14 +459,8 @@
       <input type="checkbox" id="form-allday"> 終日
     </label>
     <div class="form-time-row" id="form-time-section">
-      <div>
-        <label>開始</label>
-        <input type="datetime-local" id="form-start">
-      </div>
-      <div>
-        <label>終了</label>
-        <input type="datetime-local" id="form-end">
-      </div>
+      <div><label>開始</label><input type="datetime-local" id="form-start"></div>
+      <div><label>終了</label><input type="datetime-local" id="form-end"></div>
     </div>
     <div class="form-row" id="form-date-section" style="display:none">
       <label>日付</label>
@@ -498,6 +478,21 @@
       <label>メモ</label>
       <textarea id="form-desc" placeholder="メモ（任意）"></textarea>
     </div>
+    <!-- リピート設定 -->
+    <div class="form-row">
+      <label>繰り返し</label>
+      <select id="form-repeat">
+        <option value="none">なし</option>
+        <option value="daily">毎日</option>
+        <option value="weekly">毎週（同じ曜日）</option>
+        <option value="monthly">毎月（同じ日）</option>
+        <option value="yearly">毎年（同じ日）</option>
+      </select>
+    </div>
+    <div class="form-row" id="form-repeat-end-row" style="display:none">
+      <label>繰り返し終了日</label>
+      <input type="date" id="form-repeat-end">
+    </div>
     <div class="form-actions">
       <button class="btn-primary" id="form-save-btn">保存</button>
       <button class="btn-secondary" id="form-cancel-btn">キャンセル</button>
@@ -505,9 +500,7 @@
   </div>
 </div>
 
-<!-- Google Identity Services -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-
 <script>
 // ════════════════════════════════
 //  ★ ここに自分のクライアントIDを貼る
@@ -520,8 +513,7 @@ const DISCOVERY = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest
 let tokenClient, gapiLoaded = false, gisLoaded = false;
 let view = 'month', cur = new Date(), selectedDate = new Date();
 let expandedWeek = null;
-let eventsCache = {}; // "YYYY-M" => events[]
-let userInitial = 'G';
+let eventsCache = {};
 
 const COLORS = [
   {bg:'#e8f0fe',text:'#1558b0'},{bg:'#e6f4ea',text:'#137333'},
@@ -531,79 +523,50 @@ const COLORS = [
 const DOW = ['日','月','火','水','木','金','土'];
 const HOURS = Array.from({length:24},(_,i)=>i);
 
-// ── トークン保存・復元 ──
+// ── トークン保存 ──
 const TOKEN_KEY = 'mycal_token';
-
-function saveToken(token) {
-  try {
-    sessionStorage.setItem(TOKEN_KEY, JSON.stringify({
-      token,
-      expires: Date.now() + (token.expires_in - 60) * 1000
-    }));
-  } catch(e) {}
+function saveToken(t) {
+  try { sessionStorage.setItem(TOKEN_KEY, JSON.stringify({token:t, expires:Date.now()+(t.expires_in-60)*1000})); } catch(e){}
 }
-
 function loadToken() {
   try {
-    const raw = sessionStorage.getItem(TOKEN_KEY);
-    if (!raw) return null;
-    const { token, expires } = JSON.parse(raw);
+    const r = sessionStorage.getItem(TOKEN_KEY);
+    if (!r) return null;
+    const {token, expires} = JSON.parse(r);
     if (Date.now() > expires) { sessionStorage.removeItem(TOKEN_KEY); return null; }
     return token;
   } catch(e) { return null; }
 }
+function clearToken() { try { sessionStorage.removeItem(TOKEN_KEY); } catch(e){} }
 
-function clearToken() {
-  try { sessionStorage.removeItem(TOKEN_KEY); } catch(e) {}
-}
-
-// ── GAPI 初期化 ──
+// ── GAPI ──
 function gapiInit() {
   gapi.client.init({}).then(() => {
-    gapi.client.load(DISCOVERY).then(() => {
-      gapiLoaded = true;
-      maybeReady();
-    });
+    gapi.client.load(DISCOVERY).then(() => { gapiLoaded = true; maybeReady(); });
   });
 }
-
 function gisInit() {
   tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
+    client_id: CLIENT_ID, scope: SCOPES,
     callback: (resp) => {
       if (resp.error) return;
       saveToken(resp);
       gapi.client.setToken(resp);
-      showApp();
-      loadCurrentView();
+      showApp(); loadCurrentView();
     }
   });
   gisLoaded = true;
   maybeReady();
 }
-
 function maybeReady() {
   if (!gapiLoaded || !gisLoaded) return;
-
-  // 保存済みトークンがあれば自動ログイン
   const saved = loadToken();
-  if (saved) {
-    gapi.client.setToken(saved);
-    showApp();
-    loadCurrentView();
-    return;
-  }
-
-  document.getElementById('sign-in-btn').addEventListener('click', () => {
-    tokenClient.requestAccessToken();
-  });
+  if (saved) { gapi.client.setToken(saved); showApp(); loadCurrentView(); return; }
+  document.getElementById('sign-in-btn').addEventListener('click', () => tokenClient.requestAccessToken());
 }
-
 window.gapiInit = gapiInit;
 window.gisInit = gisInit;
 
-// GAPI スクリプトを動的に読み込む
 const gapiScript = document.createElement('script');
 gapiScript.src = 'https://apis.google.com/js/api.js';
 gapiScript.onload = () => gapi.load('client', gapiInit);
@@ -611,13 +574,7 @@ document.head.appendChild(gapiScript);
 
 setTimeout(() => {
   if (typeof google !== 'undefined' && google.accounts) gisInit();
-  else {
-    const t = setInterval(() => {
-      if (typeof google !== 'undefined' && google.accounts) {
-        clearInterval(t); gisInit();
-      }
-    }, 200);
-  }
+  else { const t = setInterval(() => { if (typeof google !== 'undefined' && google.accounts) { clearInterval(t); gisInit(); } }, 200); }
 }, 500);
 
 // ── 表示切替 ──
@@ -625,12 +582,9 @@ function showApp() {
   document.getElementById('auth-overlay').style.display = 'none';
   document.getElementById('app').classList.add('visible');
 }
-
 function setView(v) {
   view = v;
-  document.querySelectorAll('.view-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.view === v);
-  });
+  document.querySelectorAll('.view-btn').forEach(b => b.classList.toggle('active', b.dataset.view === v));
   ['month','week','day'].forEach(n => {
     document.getElementById(n+'-view').style.display = n === v ? 'flex' : 'none';
   });
@@ -638,11 +592,7 @@ function setView(v) {
   expandedWeek = null;
   render();
 }
-
-document.querySelectorAll('.view-btn').forEach(b => {
-  b.addEventListener('click', () => setView(b.dataset.view));
-});
-
+document.querySelectorAll('.view-btn').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
 document.getElementById('prev-btn').addEventListener('click', () => {
   if (view === 'month') { cur = new Date(cur.getFullYear(), cur.getMonth()-1, 1); expandedWeek = null; }
   else if (view === 'week') cur = new Date(cur.getTime() - 7*86400000);
@@ -656,68 +606,85 @@ document.getElementById('next-btn').addEventListener('click', () => {
   loadCurrentView();
 });
 document.getElementById('today-btn').addEventListener('click', () => {
-  cur = new Date(); selectedDate = new Date(); expandedWeek = null;
-  loadCurrentView();
+  cur = new Date(); selectedDate = new Date(); expandedWeek = null; loadCurrentView();
 });
 document.getElementById('user-btn').addEventListener('click', () => {
   if (confirm('ログアウトしますか？')) {
     clearToken();
-    google.accounts.oauth2.revoke(gapi.client.getToken()?.access_token, () => {
-      gapi.client.setToken(null);
-      location.reload();
-    });
+    google.accounts.oauth2.revoke(gapi.client.getToken()?.access_token, () => { gapi.client.setToken(null); location.reload(); });
   }
 });
 
-// ── API 呼び出し ──
+// ── スワイプ ──
+let swipeStartX = null, swipeStartY = null;
+const calArea = document.getElementById('cal-area');
+calArea.addEventListener('touchstart', e => {
+  swipeStartX = e.touches[0].clientX;
+  swipeStartY = e.touches[0].clientY;
+}, {passive: true});
+calArea.addEventListener('touchend', e => {
+  if (swipeStartX === null) return;
+  const dx = e.changedTouches[0].clientX - swipeStartX;
+  const dy = e.changedTouches[0].clientY - swipeStartY;
+  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+    if (dx < 0) document.getElementById('next-btn').click();
+    else document.getElementById('prev-btn').click();
+  }
+  swipeStartX = null; swipeStartY = null;
+}, {passive: true});
+
+// ── API ──
 async function fetchEvents(year, month) {
   const key = `${year}-${month}`;
   if (eventsCache[key]) return eventsCache[key];
-
   const timeMin = new Date(year, month, 1).toISOString();
   const timeMax = new Date(year, month+1, 1).toISOString();
   try {
     const res = await gapi.client.calendar.events.list({
-      calendarId: 'primary',
-      timeMin, timeMax,
-      singleEvents: true,
-      orderBy: 'startTime',
-      maxResults: 500
+      calendarId: 'primary', timeMin, timeMax,
+      singleEvents: true, orderBy: 'startTime', maxResults: 500
     });
-    const items = res.result.items || [];
-    eventsCache[key] = items;
-    return items;
-  } catch(e) {
-    console.error(e);
-    return [];
-  }
+    eventsCache[key] = res.result.items || [];
+    return eventsCache[key];
+  } catch(e) { return []; }
 }
-
 async function fetchEventsRange(start, end) {
   try {
     const res = await gapi.client.calendar.events.list({
       calendarId: 'primary',
-      timeMin: start.toISOString(),
-      timeMax: end.toISOString(),
-      singleEvents: true,
-      orderBy: 'startTime',
-      maxResults: 500
+      timeMin: start.toISOString(), timeMax: end.toISOString(),
+      singleEvents: true, orderBy: 'startTime', maxResults: 500
     });
     return res.result.items || [];
   } catch(e) { return []; }
 }
-
 function eventsForDate(allEvents, d, m, y) {
   return allEvents.filter(ev => {
-    const start = ev.start?.dateTime || ev.start?.date;
-    if (!start) return false;
-    const dt = new Date(start);
+    const s = ev.start?.dateTime || ev.start?.date;
+    if (!s) return false;
+    const dt = new Date(s);
     return dt.getDate() === d && dt.getMonth() === m && dt.getFullYear() === y;
   });
 }
 
+// 複数日にまたがる予定かどうか判定
+function isMultiDay(ev) {
+  if (ev.start?.date && ev.end?.date) {
+    const s = new Date(ev.start.date);
+    const e = new Date(ev.end.date);
+    // 終日の場合 end は翌日なので diff >= 2 で複数日
+    return (e - s) / 86400000 >= 2;
+  }
+  if (ev.start?.dateTime && ev.end?.dateTime) {
+    const s = new Date(ev.start.dateTime);
+    const e = new Date(ev.end.dateTime);
+    return s.toDateString() !== e.toDateString();
+  }
+  return false;
+}
+
 function colorForEvent(ev, idx) {
-  const colorMap = {
+  const cm = {
     '1':{bg:'#a4bdfc',text:'#1a237e'},'2':{bg:'#7ae7bf',text:'#1b5e20'},
     '3':{bg:'#dbadff',text:'#4a148c'},'4':{bg:'#ff887c',text:'#b71c1c'},
     '5':{bg:'#fbd75b',text:'#f57f17'},'6':{bg:'#ffb878',text:'#e65100'},
@@ -725,19 +692,17 @@ function colorForEvent(ev, idx) {
     '9':{bg:'#5484ed',text:'#0d47a1'},'10':{bg:'#51b749',text:'#1b5e20'},
     '11':{bg:'#dc2127',text:'#fff'}
   };
-  if (ev.colorId && colorMap[ev.colorId]) return colorMap[ev.colorId];
+  if (ev.colorId && cm[ev.colorId]) return cm[ev.colorId];
   return COLORS[idx % COLORS.length];
 }
-
-function formatTime(isoStr) {
-  if (!isoStr) return '終日';
-  const d = new Date(isoStr);
+function formatTime(s) {
+  if (!s) return '終日';
+  const d = new Date(s);
   return `${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
-
-function formatDateStr(isoStr) {
-  if (!isoStr) return '';
-  const d = new Date(isoStr);
+function formatDateStr(s) {
+  if (!s) return '';
+  const d = new Date(s);
   return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${DOW[d.getDay()]}）`;
 }
 
@@ -747,47 +712,38 @@ async function loadCurrentView() {
   else if (view === 'week') await loadWeek();
   else await loadDay();
 }
-
 function render() { loadCurrentView(); }
 
 // ── 月表示 ──
 async function loadMonth() {
   const y = cur.getFullYear(), m = cur.getMonth();
   document.getElementById('cal-title').textContent = `${y}年${m+1}月`;
-
   const container = document.getElementById('weeks-container');
   container.innerHTML = '<div class="loading"><div class="spinner"></div>読み込み中...</div>';
 
   const events = await fetchEvents(y, m);
-  // 月またぎ分も取得
-  const prevEvents = m > 0 ? await fetchEvents(y, m-1) : await fetchEvents(y-1, 11);
-  const nextEvents = m < 11 ? await fetchEvents(y, m+1) : await fetchEvents(y+1, 0);
-  const allEvents = [...prevEvents, ...events, ...nextEvents];
+  const prevEv = m > 0 ? await fetchEvents(y, m-1) : await fetchEvents(y-1, 11);
+  const nextEv = m < 11 ? await fetchEvents(y, m+1) : await fetchEvents(y+1, 0);
+  const allEvents = [...prevEv, ...events, ...nextEv];
 
   const first = new Date(y, m, 1).getDay();
   const dim = new Date(y, m+1, 0).getDate();
   const prev = new Date(y, m, 0).getDate();
   const today = new Date();
 
-  // 週数を数える
-  let weekCount = 0;
-  let d0 = 1 - first;
+  let weekCount = 0, d0 = 1 - first;
   for (let w = 0; w < 6; w++) {
     let has = false;
     for (let i = 0; i < 7; i++) { if (d0+i >= 1 && d0+i <= dim) has = true; }
     if (!has && w > 0) break;
-    weekCount++;
-    d0 += 7;
+    weekCount++; d0 += 7;
   }
 
-  // 高さ計算
-  const areaH = document.getElementById('cal-area').clientHeight - 28; // dow-h
-  const EXPANDED_H = 200;
-  const COLLAPSED_MIN = 32;
+  const areaH = document.getElementById('cal-area').clientHeight - 28;
+  const EXPANDED_H = 200, COLLAPSED_MIN = 32;
   let collapsedH;
   if (expandedWeek !== null) {
-    const remaining = areaH - EXPANDED_H;
-    collapsedH = Math.max(COLLAPSED_MIN, Math.floor(remaining / (weekCount - 1)));
+    collapsedH = Math.max(COLLAPSED_MIN, Math.floor((areaH - EXPANDED_H) / (weekCount - 1)));
   } else {
     collapsedH = Math.max(COLLAPSED_MIN, Math.floor(areaH / weekCount));
   }
@@ -803,29 +759,45 @@ async function loadMonth() {
     wr.className = 'week-row' + (isExp ? ' expanded' : '');
     wr.style.height = rowH + 'px';
 
-    // 展開ボタン
     const ec = document.createElement('div');
     ec.className = 'exp-col';
     ec.innerHTML = `<svg class="exp-icon" viewBox="0 0 8 8" fill="none">
       <path d="M2 1.5L6 4L2 6.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>`;
     const wIdx = w;
-    ec.addEventListener('click', () => {
-      expandedWeek = (expandedWeek === wIdx) ? null : wIdx;
-      loadMonth();
-    });
-
+    ec.addEventListener('click', () => { expandedWeek = (expandedWeek === wIdx) ? null : wIdx; loadMonth(); });
     wr.appendChild(ec);
 
+    // この週の日付リスト
+    const weekDates = [];
     for (let i = 0; i < 7; i++) {
       let d2 = day + i;
       let ac = d2 < 1 ? prev+d2 : d2 > dim ? d2-dim : d2;
       let mo = d2 < 1 ? m-1 : d2 > dim ? m+1 : m;
       let yr = mo < 0 ? y-1 : mo > 11 ? y+1 : y;
       mo = (mo + 12) % 12;
-      const isOther = (d2 < 1 || d2 > dim);
+      weekDates.push({d2, ac, mo, yr, isOther: d2 < 1 || d2 > dim});
+    }
+
+    // 複数日にまたがる予定を週単位で収集（帯として表示）
+    // weekDates[0]〜weekDates[6] の期間に重なる複数日予定
+    const weekStart = new Date(weekDates[0].yr, weekDates[0].mo, weekDates[0].ac);
+    const weekEnd = new Date(weekDates[6].yr, weekDates[6].mo, weekDates[6].ac, 23, 59, 59);
+
+    const spanEvents = allEvents.filter(ev => {
+      if (!isMultiDay(ev)) return false;
+      const es = new Date(ev.start?.dateTime || ev.start?.date);
+      const ee = new Date(ev.end?.dateTime || ev.end?.date);
+      return es <= weekEnd && ee >= weekStart;
+    });
+
+    for (let i = 0; i < 7; i++) {
+      const {ac, mo, yr, isOther} = weekDates[i];
       const isToday = ac === today.getDate() && mo === today.getMonth() && yr === today.getFullYear();
-      const evs = eventsForDate(allEvents, ac, mo, yr);
+      const cellDate = new Date(yr, mo, ac);
+
+      // 通常の単日予定
+      const dayEvs = eventsForDate(allEvents, ac, mo, yr).filter(ev => !isMultiDay(ev));
 
       const cell = document.createElement('div');
       cell.className = 'day-cell' + (isExp ? ' scrollable' : '');
@@ -839,21 +811,43 @@ async function loadMonth() {
       });
       cell.appendChild(dn);
 
+      // 複数日予定の帯
+      spanEvents.forEach((ev, idx) => {
+        const es = new Date(ev.start?.dateTime || ev.start?.date);
+        const eeRaw = new Date(ev.end?.dateTime || ev.end?.date);
+        // 終日の end は翌日なので1日戻す
+        const ee = ev.start?.date ? new Date(eeRaw.getTime() - 86400000) : eeRaw;
+        if (cellDate < es || cellDate > ee) return;
+
+        const isStart = cellDate.toDateString() === es.toDateString();
+        const isEnd = cellDate.toDateString() === ee.toDateString();
+        const col = colorForEvent(ev, idx);
+
+        const chip = document.createElement('div');
+        let spanClass = 'chip-span';
+        if (isStart && isEnd) spanClass += ' span-start';
+        else if (isStart) spanClass += ' span-start';
+        else if (isEnd) spanClass += ' span-end';
+        else spanClass += ' span-mid';
+        chip.className = spanClass;
+        chip.style.background = col.bg;
+        chip.style.color = col.text;
+        chip.textContent = isStart ? (ev.summary || '（タイトルなし）') : '';
+        chip.addEventListener('click', e => { e.stopPropagation(); showModal(ev); });
+        cell.appendChild(chip);
+      });
+
+      // 単日予定
       if (isExp) {
-        evs.forEach((ev, idx) => {
-          const chip = makeChip(ev, idx);
-          cell.appendChild(chip);
+        dayEvs.forEach((ev, idx) => {
+          cell.appendChild(makeChip(ev, idx));
         });
       } else {
-        // 行の高さから表示可能件数を動的に計算
-        const availH = rowH - 26; // day-num分を引く
-        const maxShow = Math.max(0, Math.floor(availH / 17));
-        const shown = evs.slice(0, maxShow);
-        const hidden = evs.length - shown.length;
-        shown.forEach((ev, idx) => {
-          const chip = makeChip(ev, idx);
-          cell.appendChild(chip);
-        });
+        const availH = rowH - 26;
+        const maxShow = Math.max(0, Math.floor(availH / 15));
+        const shown = dayEvs.slice(0, maxShow);
+        const hidden = dayEvs.length - shown.length;
+        shown.forEach((ev, idx) => cell.appendChild(makeChip(ev, idx)));
         if (hidden > 0) {
           const b = document.createElement('div');
           b.className = 'more-badge';
@@ -892,7 +886,6 @@ async function loadWeek() {
   const today = new Date();
   const days = Array.from({length:7}, (_,i) => new Date(base.getTime() + i*86400000));
 
-  // ヘッダー
   const head = document.getElementById('wv-head');
   head.innerHTML = '<div class="wv-head-spacer"></div>';
   days.forEach(dd => {
@@ -901,16 +894,13 @@ async function loadWeek() {
     div.className = 'wv-head-day';
     div.innerHTML = `<div class="wv-day-name">${DOW[dd.getDay()]}</div>
       <div class="wv-day-num${isT?' today':''}">${dd.getDate()}</div>`;
-    div.addEventListener('click', () => {
-      selectedDate = new Date(dd); cur = new Date(dd); setView('day');
-    });
+    div.addEventListener('click', () => { selectedDate = new Date(dd); cur = new Date(dd); setView('day'); });
     head.appendChild(div);
   });
 
   const scroll = document.getElementById('wv-scroll');
   scroll.innerHTML = '<div class="loading"><div class="spinner"></div>読み込み中...</div>';
-
-  const events = await fetchEventsRange(base, endD);
+  const evs = await fetchEventsRange(base, endD);
 
   let gridHtml = '<div class="wv-grid">';
   HOURS.forEach(h => {
@@ -922,119 +912,94 @@ async function loadWeek() {
   gridHtml += '</div>';
   scroll.innerHTML = gridHtml;
 
-  events.forEach((ev, idx) => {
-    if (ev.start?.date) return; // 終日は省略
-    const start = new Date(ev.start.dateTime);
-    const end = new Date(ev.end.dateTime);
-    const slot = scroll.querySelector(`.wv-slot[data-y="${start.getFullYear()}"][data-m="${start.getMonth()}"][data-d="${start.getDate()}"][data-h="${start.getHours()}"]`);
+  evs.forEach((ev, idx) => {
+    if (ev.start?.date) return;
+    const s = new Date(ev.start.dateTime);
+    const e = new Date(ev.end.dateTime);
+    const slot = scroll.querySelector(`.wv-slot[data-y="${s.getFullYear()}"][data-m="${s.getMonth()}"][data-d="${s.getDate()}"][data-h="${s.getHours()}"]`);
     if (!slot) return;
     const col = colorForEvent(ev, idx);
-    const durMin = (end - start) / 60000;
-    const topPx = start.getMinutes() / 60 * 48;
-    const h = Math.max(durMin / 60 * 48, 18);
+    const h = Math.max((e-s)/60000/60*48, 18);
     const el = document.createElement('div');
     el.className = 'wv-event';
-    el.style.cssText = `top:${topPx}px;height:${h}px;background:${col.bg};color:${col.text}`;
+    el.style.cssText = `top:${s.getMinutes()/60*48}px;height:${h}px;background:${col.bg};color:${col.text}`;
     el.textContent = ev.summary || '（タイトルなし）';
     el.addEventListener('click', () => showModal(ev));
     slot.appendChild(el);
   });
-
   scroll.scrollTop = 8 * 48;
 }
 
 // ── 日表示 ──
 async function loadDay() {
   const y = cur.getFullYear(), m = cur.getMonth(), d = cur.getDate();
-  document.getElementById('cal-title').textContent =
-    `${m+1}月${d}日（${DOW[new Date(y,m,d).getDay()]}）`;
-
+  document.getElementById('cal-title').textContent = `${m+1}月${d}日（${DOW[new Date(y,m,d).getDay()]}）`;
   const scroll = document.getElementById('dv-scroll');
   scroll.innerHTML = '<div class="loading"><div class="spinner"></div>読み込み中...</div>';
-
-  const start = new Date(y, m, d);
-  const end = new Date(y, m, d+1);
-  const events = await fetchEventsRange(start, end);
+  const evs = await fetchEventsRange(new Date(y,m,d), new Date(y,m,d+1));
 
   let gridHtml = '<div class="dv-grid">';
-  HOURS.forEach(h => {
-    gridHtml += `<div class="dv-time">${h}:00</div><div class="dv-slot" data-h="${h}"></div>`;
-  });
+  HOURS.forEach(h => { gridHtml += `<div class="dv-time">${h}:00</div><div class="dv-slot" data-h="${h}"></div>`; });
   gridHtml += '</div>';
   scroll.innerHTML = gridHtml;
 
-  events.forEach((ev, idx) => {
+  evs.forEach((ev, idx) => {
     if (ev.start?.date) return;
-    const start = new Date(ev.start.dateTime);
-    const end = new Date(ev.end.dateTime);
-    const slot = scroll.querySelector(`.dv-slot[data-h="${start.getHours()}"]`);
+    const s = new Date(ev.start.dateTime);
+    const e = new Date(ev.end.dateTime);
+    const slot = scroll.querySelector(`.dv-slot[data-h="${s.getHours()}"]`);
     if (!slot) return;
     const col = colorForEvent(ev, idx);
-    const durMin = (end - start) / 60000;
-    const topPx = start.getMinutes() / 60 * 48;
-    const h = Math.max(durMin / 60 * 48, 20);
+    const h = Math.max((e-s)/60000/60*48, 20);
     const el = document.createElement('div');
     el.className = 'dv-event';
-    el.style.cssText = `top:${topPx}px;height:${h}px;background:${col.bg};color:${col.text}`;
+    el.style.cssText = `top:${s.getMinutes()/60*48}px;height:${h}px;background:${col.bg};color:${col.text}`;
     el.innerHTML = `<div class="dv-event-title">${ev.summary || '（タイトルなし）'}</div>
       <div class="dv-event-time">${formatTime(ev.start.dateTime)} – ${formatTime(ev.end.dateTime)}</div>`;
     el.addEventListener('click', () => showModal(ev));
     slot.appendChild(el);
   });
-
   scroll.scrollTop = 8 * 48;
 }
 
 // ── カラーピッカー ──
 const GCAL_COLORS = [
-  {id:'',    bg:'#4285f4', label:'デフォルト'},
-  {id:'1',   bg:'#a4bdfc', label:'ラベンダー'},
-  {id:'2',   bg:'#7ae7bf', label:'セージ'},
-  {id:'3',   bg:'#dbadff', label:'グレープ'},
-  {id:'4',   bg:'#ff887c', label:'フラミンゴ'},
-  {id:'5',   bg:'#fbd75b', label:'バナナ'},
-  {id:'6',   bg:'#ffb878', label:'タンジェリン'},
-  {id:'7',   bg:'#46d6db', label:'ピーコック'},
-  {id:'8',   bg:'#e1e1e1', label:'グラファイト'},
-  {id:'9',   bg:'#5484ed', label:'ブルーベリー'},
-  {id:'10',  bg:'#51b749', label:'セージグリーン'},
-  {id:'11',  bg:'#dc2127', label:'トマト'},
+  {id:'',bg:'#4285f4',label:'デフォルト'},{id:'1',bg:'#a4bdfc',label:'ラベンダー'},
+  {id:'2',bg:'#7ae7bf',label:'セージ'},{id:'3',bg:'#dbadff',label:'グレープ'},
+  {id:'4',bg:'#ff887c',label:'フラミンゴ'},{id:'5',bg:'#fbd75b',label:'バナナ'},
+  {id:'6',bg:'#ffb878',label:'タンジェリン'},{id:'7',bg:'#46d6db',label:'ピーコック'},
+  {id:'8',bg:'#e1e1e1',label:'グラファイト'},{id:'9',bg:'#5484ed',label:'ブルーベリー'},
+  {id:'10',bg:'#51b749',label:'セージグリーン'},{id:'11',bg:'#dc2127',label:'トマト'},
 ];
-
 let selectedColorId = '';
-
 function initColorPicker(currentColorId = '') {
   selectedColorId = currentColorId;
-  const container = document.getElementById('form-color-picker');
-  container.innerHTML = '';
-  GCAL_COLORS.forEach(c => {
+  const c = document.getElementById('form-color-picker');
+  c.innerHTML = '';
+  GCAL_COLORS.forEach(col => {
     const sw = document.createElement('div');
-    sw.className = 'color-swatch' + (c.id === selectedColorId ? ' selected' : '');
-    sw.style.background = c.bg;
-    sw.title = c.label;
+    sw.className = 'color-swatch' + (col.id === selectedColorId ? ' selected' : '');
+    sw.style.background = col.bg;
+    sw.title = col.label;
     sw.addEventListener('click', () => {
-      selectedColorId = c.id;
-      container.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+      selectedColorId = col.id;
+      c.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
       sw.classList.add('selected');
     });
-    container.appendChild(sw);
+    c.appendChild(sw);
   });
 }
 
 // ── 詳細モーダル ──
 let currentEvent = null;
-
 function showModal(ev) {
   currentEvent = ev;
   document.getElementById('modal-title').textContent = ev.summary || '（タイトルなし）';
   const isAllDay = !!ev.start?.date;
   const dateStr = formatDateStr(ev.start?.dateTime || ev.start?.date);
-  if (isAllDay) {
-    document.getElementById('modal-time').textContent = dateStr + ' 終日';
-  } else {
-    document.getElementById('modal-time').textContent =
-      `${dateStr} ${formatTime(ev.start?.dateTime)} – ${formatTime(ev.end?.dateTime)}`;
-  }
+  document.getElementById('modal-time').textContent = isAllDay
+    ? dateStr + ' 終日'
+    : `${dateStr} ${formatTime(ev.start?.dateTime)} – ${formatTime(ev.end?.dateTime)}`;
   const loc = ev.location;
   document.getElementById('modal-loc-row').style.display = loc ? '' : 'none';
   document.getElementById('modal-loc').textContent = loc || '';
@@ -1043,41 +1008,32 @@ function showModal(ev) {
   document.getElementById('modal-desc').textContent = desc ? desc.replace(/<[^>]*>/g,'') : '';
   document.getElementById('modal-bg').classList.add('open');
 }
-
-document.getElementById('modal-close').addEventListener('click', () => {
-  document.getElementById('modal-bg').classList.remove('open');
-});
-document.getElementById('modal-bg').addEventListener('click', e => {
-  if (e.target === document.getElementById('modal-bg'))
-    document.getElementById('modal-bg').classList.remove('open');
-});
-
+document.getElementById('modal-close').addEventListener('click', () => document.getElementById('modal-bg').classList.remove('open'));
+document.getElementById('modal-bg').addEventListener('click', e => { if (e.target === document.getElementById('modal-bg')) document.getElementById('modal-bg').classList.remove('open'); });
 document.getElementById('modal-edit-btn').addEventListener('click', () => {
   document.getElementById('modal-bg').classList.remove('open');
   openFormModal(currentEvent);
 });
-
+document.getElementById('modal-copy-btn').addEventListener('click', () => {
+  document.getElementById('modal-bg').classList.remove('open');
+  openFormModal(currentEvent, null, true); // 複製モード
+});
 document.getElementById('modal-delete-btn').addEventListener('click', async () => {
   if (!confirm(`「${currentEvent.summary || '予定'}」を削除しますか？`)) return;
   try {
-    await gapi.client.calendar.events.delete({
-      calendarId: 'primary',
-      eventId: currentEvent.id
-    });
+    await gapi.client.calendar.events.delete({ calendarId: 'primary', eventId: currentEvent.id });
     document.getElementById('modal-bg').classList.remove('open');
-    eventsCache = {};
-    loadCurrentView();
-  } catch(e) {
-    alert('削除に失敗しました: ' + e.message);
-  }
+    eventsCache = {}; loadCurrentView();
+  } catch(e) { alert('削除に失敗しました: ' + e.message); }
 });
 
-// ── 追加・編集フォームモーダル ──
+// ── フォームモーダル ──
 let editingEventId = null;
-
-function openFormModal(ev = null, defaultDate = null) {
-  editingEventId = ev ? ev.id : null;
-  document.getElementById('form-modal-title').textContent = ev ? '予定を編集' : '予定を追加';
+function openFormModal(ev = null, defaultDate = null, isCopy = false) {
+  editingEventId = (ev && !isCopy) ? ev.id : null;
+  document.getElementById('form-modal-title').textContent = isCopy ? '予定を複製' : ev ? '予定を編集' : '予定を追加';
+  document.getElementById('form-repeat').value = 'none';
+  document.getElementById('form-repeat-end-row').style.display = 'none';
 
   const isAllDay = ev ? !!ev.start?.date : false;
   document.getElementById('form-allday').checked = isAllDay;
@@ -1099,33 +1055,26 @@ function openFormModal(ev = null, defaultDate = null) {
     document.getElementById('form-desc').value = '';
     if (defaultDate) {
       const d = defaultDate;
-      const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-      document.getElementById('form-date').value = dateStr;
-      document.getElementById('form-start').value = `${dateStr}T09:00`;
-      document.getElementById('form-end').value = `${dateStr}T10:00`;
+      const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      document.getElementById('form-date').value = ds;
+      document.getElementById('form-start').value = `${ds}T09:00`;
+      document.getElementById('form-end').value = `${ds}T10:00`;
     }
   }
   document.getElementById('form-modal-bg').classList.add('open');
   document.getElementById('form-title').focus();
   initColorPicker(ev ? (ev.colorId || '') : '');
 }
-
-function toggleAlldayFields(isAllDay) {
-  document.getElementById('form-time-section').style.display = isAllDay ? 'none' : 'grid';
-  document.getElementById('form-date-section').style.display = isAllDay ? '' : 'none';
+function toggleAlldayFields(v) {
+  document.getElementById('form-time-section').style.display = v ? 'none' : 'grid';
+  document.getElementById('form-date-section').style.display = v ? '' : 'none';
 }
-
-document.getElementById('form-allday').addEventListener('change', e => {
-  toggleAlldayFields(e.target.checked);
+document.getElementById('form-allday').addEventListener('change', e => toggleAlldayFields(e.target.checked));
+document.getElementById('form-repeat').addEventListener('change', e => {
+  document.getElementById('form-repeat-end-row').style.display = e.target.value !== 'none' ? '' : 'none';
 });
-
-document.getElementById('form-cancel-btn').addEventListener('click', () => {
-  document.getElementById('form-modal-bg').classList.remove('open');
-});
-document.getElementById('form-modal-bg').addEventListener('click', e => {
-  if (e.target === document.getElementById('form-modal-bg'))
-    document.getElementById('form-modal-bg').classList.remove('open');
-});
+document.getElementById('form-cancel-btn').addEventListener('click', () => document.getElementById('form-modal-bg').classList.remove('open'));
+document.getElementById('form-modal-bg').addEventListener('click', e => { if (e.target === document.getElementById('form-modal-bg')) document.getElementById('form-modal-bg').classList.remove('open'); });
 
 document.getElementById('form-save-btn').addEventListener('click', async () => {
   const title = document.getElementById('form-title').value.trim();
@@ -1133,65 +1082,60 @@ document.getElementById('form-save-btn').addEventListener('click', async () => {
 
   const isAllDay = document.getElementById('form-allday').checked;
   let startObj, endObj;
-
   if (isAllDay) {
     const d = document.getElementById('form-date').value;
     if (!d) { alert('日付を入力してください'); return; }
     startObj = { date: d };
-    const nextDay = new Date(d);
-    nextDay.setDate(nextDay.getDate() + 1);
-    endObj = { date: nextDay.toISOString().split('T')[0] };
+    const nd = new Date(d); nd.setDate(nd.getDate()+1);
+    endObj = { date: nd.toISOString().split('T')[0] };
   } else {
     const s = document.getElementById('form-start').value;
     const en = document.getElementById('form-end').value;
     if (!s || !en) { alert('開始・終了時刻を入力してください'); return; }
-    startObj = { dateTime: new Date(s).toISOString(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone };
-    endObj = { dateTime: new Date(en).toISOString(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone };
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    startObj = { dateTime: new Date(s).toISOString(), timeZone: tz };
+    endObj = { dateTime: new Date(en).toISOString(), timeZone: tz };
+  }
+
+  // リピート設定（RRULE）
+  const repeatVal = document.getElementById('form-repeat').value;
+  let recurrence;
+  if (repeatVal !== 'none') {
+    const endDate = document.getElementById('form-repeat-end').value;
+    const untilStr = endDate ? `;UNTIL=${endDate.replace(/-/g,'')}T235959Z` : '';
+    const freqMap = { daily:'DAILY', weekly:'WEEKLY', monthly:'MONTHLY', yearly:'YEARLY' };
+    recurrence = [`RRULE:FREQ=${freqMap[repeatVal]}${untilStr}`];
   }
 
   const body = {
     summary: title,
-    start: startObj,
-    end: endObj,
+    start: startObj, end: endObj,
     location: document.getElementById('form-location').value.trim() || undefined,
     description: document.getElementById('form-desc').value.trim() || undefined,
     colorId: selectedColorId || undefined,
+    ...(recurrence ? { recurrence } : {})
   };
 
   try {
     if (editingEventId) {
-      await gapi.client.calendar.events.update({
-        calendarId: 'primary', eventId: editingEventId, resource: body
-      });
+      await gapi.client.calendar.events.update({ calendarId: 'primary', eventId: editingEventId, resource: body });
     } else {
-      await gapi.client.calendar.events.insert({
-        calendarId: 'primary', resource: body
-      });
+      await gapi.client.calendar.events.insert({ calendarId: 'primary', resource: body });
     }
     document.getElementById('form-modal-bg').classList.remove('open');
-    eventsCache = {};
-    loadCurrentView();
-  } catch(e) {
-    alert('保存に失敗しました: ' + e.message);
-  }
+    eventsCache = {}; loadCurrentView();
+  } catch(e) { alert('保存に失敗しました: ' + e.message); }
 });
 
-function toLocalDatetimeInput(isoStr) {
-  const d = new Date(isoStr);
-  const pad = n => String(n).padStart(2,'0');
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+function toLocalDatetimeInput(s) {
+  const d = new Date(s);
+  const p = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
 // 初期表示
 setView('month');
-
-// Service Worker登録
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch(() => {});
-}
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 </script>
-
-<!-- Google Identity Services -->
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 </body>
 </html>
