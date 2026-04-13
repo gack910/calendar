@@ -2,7 +2,14 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="カレンダー">
+  <meta name="theme-color" content="#1a73e8">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
   <title>マイカレンダー</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -30,11 +37,16 @@
 
     html, body {
       height: 100%;
+      height: 100dvh;
       font-family: var(--font);
       color: var(--text);
       background: var(--bg);
       overflow: hidden;
     }
+
+    /* ── APP SHELL ── */
+    #app { display: none; flex-direction: column; height: 100vh; height: 100dvh; }
+    #app.visible { display: flex; }
 
     /* ── AUTH OVERLAY ── */
     #auth-overlay {
@@ -58,10 +70,6 @@
     }
     .google-btn:hover { background: var(--bg2); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
     .google-btn svg { width: 18px; height: 18px; }
-
-    /* ── APP SHELL ── */
-    #app { display: none; flex-direction: column; height: 100vh; }
-    #app.visible { display: flex; }
 
     /* ── TOP HEADER ── */
     .top-header {
@@ -362,6 +370,7 @@
       .cal-title { font-size: 16px; }
       .view-btn { padding: 5px 8px; font-size: 12px; }
       .today-btn { display: none; }
+      body { padding-bottom: env(safe-area-inset-bottom); }
     }
   </style>
 </head>
@@ -503,7 +512,7 @@
 // ════════════════════════════════
 //  ★ ここに自分のクライアントIDを貼る
 // ════════════════════════════════
-const CLIENT_ID = '66585014637-9drc6lc2o28um48gq7o6k3iku296o2vb.apps.googleusercontent.com';
+const CLIENT_ID = 'YOUR_CLIENT_ID.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/calendar';
 const DISCOVERY = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
 
@@ -1175,6 +1184,11 @@ function toLocalDatetimeInput(isoStr) {
 
 // 初期表示
 setView('month');
+
+// Service Worker登録
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
 </script>
 
 <!-- Google Identity Services -->
