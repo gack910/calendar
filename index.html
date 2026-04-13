@@ -1212,47 +1212,7 @@ function toLocalDatetimeInput(s) {
 setView('month');
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 
-// ── 横スワイプで前後移動 ──
-(function() {
-  let startX = 0, startY = 0, tracking = false;
-  const area = document.getElementById('cal-area');
 
-  area.addEventListener('touchstart', e => {
-    if (e.touches.length !== 1) return;
-    startX = e.touches[0].clientX;
-    startY = e.touches[0].clientY;
-    tracking = true;
-  }, { passive: true });
-
-  area.addEventListener('touchmove', e => {
-    if (!tracking || e.touches.length !== 1) return;
-    const dx = e.touches[0].clientX - startX;
-    const dy = e.touches[0].clientY - startY;
-    // 横方向が明確に支配的な場合のみスクロールを抑制
-    if (Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(dx) > 10) {
-      e.preventDefault();
-    }
-  }, { passive: false });
-
-  area.addEventListener('touchend', e => {
-    if (!tracking) return;
-    tracking = false;
-    const dx = e.changedTouches[0].clientX - startX;
-    const dy = e.changedTouches[0].clientY - startY;
-    // 横方向50px以上 かつ 縦より横が1.5倍以上のみ反応
-    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    if (dx < 0) {
-      if (view === 'month') { cur = new Date(cur.getFullYear(), cur.getMonth()+1, 1); expandedWeek = null; }
-      else if (view === 'week') cur = new Date(cur.getTime() + 7*86400000);
-      else { cur = new Date(cur.getTime() + 86400000); selectedDate = new Date(cur); }
-    } else {
-      if (view === 'month') { cur = new Date(cur.getFullYear(), cur.getMonth()-1, 1); expandedWeek = null; }
-      else if (view === 'week') cur = new Date(cur.getTime() - 7*86400000);
-      else { cur = new Date(cur.getTime() - 86400000); selectedDate = new Date(cur); }
-    }
-    loadCurrentView();
-  }, { passive: true });
-})();
 </script>
 </body>
 </html>
