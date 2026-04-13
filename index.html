@@ -169,10 +169,10 @@
 
     /* ── チップ（通常） ── */
     .chip {
-      font-size: 10px; padding: 1px 4px;
+      font-size: 9px; padding: 1px 4px;
       border-radius: 3px; margin-bottom: 1px;
       white-space: nowrap; overflow: hidden;
-      text-overflow: clip; /* ← 「…」なし */
+      text-overflow: clip;
       flex-shrink: 0; cursor: pointer;
       transition: filter .1s;
     }
@@ -180,16 +180,15 @@
 
     /* ── 複数日にまたがる帯 ── */
     .chip-span {
-      font-size: 10px; padding: 1px 4px;
-      border-radius: 3px; margin-bottom: 1px;
+      font-size: 9px; padding: 2px 4px;
+      margin-bottom: 1px;
       white-space: nowrap; overflow: hidden;
       text-overflow: clip;
       flex-shrink: 0; cursor: pointer;
     }
-    /* 帯の左右端をそれぞれ開く */
     .chip-span.span-start { border-radius: 3px 0 0 3px; }
-    .chip-span.span-mid   { border-radius: 0; margin-left: -3px; margin-right: -3px; padding-left: 2px; }
-    .chip-span.span-end   { border-radius: 0 3px 3px 0; margin-left: -3px; padding-left: 2px; }
+    .chip-span.span-mid   { border-radius: 0; margin-left: -4px; margin-right: -4px; padding-left: 2px; }
+    .chip-span.span-end   { border-radius: 0 3px 3px 0; margin-left: -4px; padding-left: 2px; }
 
     .more-badge {
       font-size: 10px; color: var(--text-sub);
@@ -234,7 +233,7 @@
     .wv-slot:last-child { border-right: none; }
     .wv-event {
       position: absolute; left: 2px; right: 2px;
-      border-radius: 3px; font-size: 10px; padding: 2px 4px;
+      border-radius: 3px; font-size: 9px; padding: 2px 4px;
       overflow: hidden; text-overflow: clip;
       white-space: nowrap; cursor: pointer; z-index: 1;
     }
@@ -1136,6 +1135,42 @@ function toLocalDatetimeInput(s) {
 // 初期表示
 setView('month');
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+
+// ── 横スワイプで前後移動 ──
+(function() {
+  let startX = 0, startY = 0, moved = false;
+  const area = document.getElementById('cal-area');
+
+  area.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    moved = false;
+  }, { passive: true });
+
+  area.addEventListener('touchmove', e => {
+    moved = true;
+  }, { passive: true });
+
+  area.addEventListener('touchend', e => {
+    if (!moved) return;
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    // 横方向が支配的なスワイプのみ反応（縦スクロールを妨げない）
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    if (dx < 0) {
+      // 左スワイプ → 次へ
+      if (view === 'month') { cur = new Date(cur.getFullYear(), cur.getMonth()+1, 1); expandedWeek = null; }
+      else if (view === 'week') cur = new Date(cur.getTime() + 7*86400000);
+      else { cur = new Date(cur.getTime() + 86400000); selectedDate = new Date(cur); }
+    } else {
+      // 右スワイプ → 前へ
+      if (view === 'month') { cur = new Date(cur.getFullYear(), cur.getMonth()-1, 1); expandedWeek = null; }
+      else if (view === 'week') cur = new Date(cur.getTime() - 7*86400000);
+      else { cur = new Date(cur.getTime() - 86400000); selectedDate = new Date(cur); }
+    }
+    loadCurrentView();
+  }, { passive: true });
+})();
 </script>
 </body>
 </html>
