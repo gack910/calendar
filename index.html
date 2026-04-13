@@ -286,6 +286,68 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ── EVENT FORM MODAL ── */
+    #form-modal-bg {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.3); z-index: 60;
+      align-items: center; justify-content: center;
+    }
+    #form-modal-bg.open { display: flex; }
+    .form-modal {
+      background: #fff; border-radius: 12px;
+      padding: 24px; max-width: 440px; width: 92%;
+      box-shadow: 0 8px 32px rgba(0,0,0,.2);
+    }
+    .form-modal h3 { font-size: 17px; font-weight: 500; margin-bottom: 18px; }
+    .form-row { margin-bottom: 14px; }
+    .form-row label { display: block; font-size: 12px; color: var(--text-sub); margin-bottom: 4px; }
+    .form-row input, .form-row textarea {
+      width: 100%; padding: 8px 10px;
+      border: 1px solid var(--border); border-radius: var(--radius);
+      font-size: 14px; font-family: var(--font); color: var(--text);
+      background: var(--bg);
+      transition: border-color .15s;
+    }
+    .form-row input:focus, .form-row textarea:focus {
+      outline: none; border-color: var(--blue);
+    }
+    .form-row textarea { resize: vertical; min-height: 72px; }
+    .form-time-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+    .form-time-row label { display: block; font-size: 12px; color: var(--text-sub); margin-bottom: 4px; }
+    .form-time-row input {
+      width: 100%; padding: 8px 10px;
+      border: 1px solid var(--border); border-radius: var(--radius);
+      font-size: 14px; font-family: var(--font); color: var(--text);
+    }
+    .form-time-row input:focus { outline: none; border-color: var(--blue); }
+    .form-allday { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 14px; cursor: pointer; }
+    .form-allday input { width: auto; margin: 0; cursor: pointer; }
+    .form-actions { display: flex; gap: 8px; margin-top: 18px; }
+    .btn-primary {
+      flex: 1; padding: 9px;
+      background: var(--blue); color: #fff;
+      border: none; border-radius: var(--radius);
+      font-size: 14px; cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-primary:hover { background: #1557b0; }
+    .btn-secondary {
+      padding: 9px 16px;
+      background: none; color: var(--text-sub);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      font-size: 14px; cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-secondary:hover { background: var(--bg2); }
+    .btn-danger {
+      padding: 9px 16px;
+      background: none; color: #c5221f;
+      border: 1px solid #f5c6c6; border-radius: var(--radius);
+      font-size: 14px; cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-danger:hover { background: #fce8e6; }
+
     /* ── RESPONSIVE ── */
     @media (max-width: 600px) {
       .cal-title { font-size: 16px; }
@@ -373,7 +435,51 @@
     <div class="modal-row" id="modal-desc-row" style="display:none">
       <span class="modal-label">メモ</span><span id="modal-desc"></span>
     </div>
-    <button class="modal-close" id="modal-close">閉じる</button>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn-primary" id="modal-edit-btn">編集</button>
+      <button class="btn-danger" id="modal-delete-btn">削除</button>
+      <button class="btn-secondary" id="modal-close">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- 予定追加・編集フォームモーダル -->
+<div id="form-modal-bg">
+  <div class="form-modal">
+    <h3 id="form-modal-title">予定を追加</h3>
+    <div class="form-row">
+      <label>タイトル</label>
+      <input type="text" id="form-title" placeholder="タイトルを入力">
+    </div>
+    <label class="form-allday">
+      <input type="checkbox" id="form-allday"> 終日
+    </label>
+    <div class="form-time-row" id="form-time-section">
+      <div>
+        <label>開始</label>
+        <input type="datetime-local" id="form-start">
+      </div>
+      <div>
+        <label>終了</label>
+        <input type="datetime-local" id="form-end">
+      </div>
+    </div>
+    <div class="form-row" id="form-date-section" style="display:none">
+      <label>日付</label>
+      <input type="date" id="form-date">
+    </div>
+    <div class="form-row">
+      <label>場所</label>
+      <input type="text" id="form-location" placeholder="場所（任意）">
+    </div>
+    <div class="form-row">
+      <label>メモ</label>
+      <textarea id="form-desc" placeholder="メモ（任意）"></textarea>
+    </div>
+    <div class="form-actions">
+      <button class="btn-primary" id="form-save-btn">保存</button>
+      <button class="btn-secondary" id="form-cancel-btn">キャンセル</button>
+    </div>
   </div>
 </div>
 
@@ -384,8 +490,8 @@
 // ════════════════════════════════
 //  ★ ここに自分のクライアントIDを貼る
 // ════════════════════════════════
-const CLIENT_ID = '66585014637-9drc6lc2o28um48gq7o6k3iku296o2vb.apps.googleusercontent.com';
-const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
+const CLIENT_ID = 'YOUR_CLIENT_ID.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/calendar';
 const DISCOVERY = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
 
 // ── 状態 ──
@@ -669,9 +775,7 @@ async function loadMonth() {
       dn.textContent = ac;
       dn.addEventListener('click', e => {
         e.stopPropagation();
-        selectedDate = new Date(yr, mo, ac);
-        cur = new Date(yr, mo, ac);
-        setView('day');
+        openFormModal(null, new Date(yr, mo, ac));
       });
       cell.appendChild(dn);
 
@@ -821,8 +925,11 @@ async function loadDay() {
   scroll.scrollTop = 8 * 48;
 }
 
-// ── モーダル ──
+// ── 詳細モーダル ──
+let currentEvent = null;
+
 function showModal(ev) {
+  currentEvent = ev;
   document.getElementById('modal-title').textContent = ev.summary || '（タイトルなし）';
   const isAllDay = !!ev.start?.date;
   const dateStr = formatDateStr(ev.start?.dateTime || ev.start?.date);
@@ -848,6 +955,134 @@ document.getElementById('modal-bg').addEventListener('click', e => {
   if (e.target === document.getElementById('modal-bg'))
     document.getElementById('modal-bg').classList.remove('open');
 });
+
+document.getElementById('modal-edit-btn').addEventListener('click', () => {
+  document.getElementById('modal-bg').classList.remove('open');
+  openFormModal(currentEvent);
+});
+
+document.getElementById('modal-delete-btn').addEventListener('click', async () => {
+  if (!confirm(`「${currentEvent.summary || '予定'}」を削除しますか？`)) return;
+  try {
+    await gapi.client.calendar.events.delete({
+      calendarId: 'primary',
+      eventId: currentEvent.id
+    });
+    document.getElementById('modal-bg').classList.remove('open');
+    eventsCache = {};
+    loadCurrentView();
+  } catch(e) {
+    alert('削除に失敗しました: ' + e.message);
+  }
+});
+
+// ── 追加・編集フォームモーダル ──
+let editingEventId = null;
+
+function openFormModal(ev = null, defaultDate = null) {
+  editingEventId = ev ? ev.id : null;
+  document.getElementById('form-modal-title').textContent = ev ? '予定を編集' : '予定を追加';
+
+  const isAllDay = ev ? !!ev.start?.date : false;
+  document.getElementById('form-allday').checked = isAllDay;
+  toggleAlldayFields(isAllDay);
+
+  if (ev) {
+    document.getElementById('form-title').value = ev.summary || '';
+    document.getElementById('form-location').value = ev.location || '';
+    document.getElementById('form-desc').value = ev.description ? ev.description.replace(/<[^>]*>/g,'') : '';
+    if (isAllDay) {
+      document.getElementById('form-date').value = ev.start.date;
+    } else {
+      document.getElementById('form-start').value = toLocalDatetimeInput(ev.start.dateTime);
+      document.getElementById('form-end').value = toLocalDatetimeInput(ev.end.dateTime);
+    }
+  } else {
+    document.getElementById('form-title').value = '';
+    document.getElementById('form-location').value = '';
+    document.getElementById('form-desc').value = '';
+    if (defaultDate) {
+      const d = defaultDate;
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      document.getElementById('form-date').value = dateStr;
+      document.getElementById('form-start').value = `${dateStr}T09:00`;
+      document.getElementById('form-end').value = `${dateStr}T10:00`;
+    }
+  }
+  document.getElementById('form-modal-bg').classList.add('open');
+  document.getElementById('form-title').focus();
+}
+
+function toggleAlldayFields(isAllDay) {
+  document.getElementById('form-time-section').style.display = isAllDay ? 'none' : 'grid';
+  document.getElementById('form-date-section').style.display = isAllDay ? '' : 'none';
+}
+
+document.getElementById('form-allday').addEventListener('change', e => {
+  toggleAlldayFields(e.target.checked);
+});
+
+document.getElementById('form-cancel-btn').addEventListener('click', () => {
+  document.getElementById('form-modal-bg').classList.remove('open');
+});
+document.getElementById('form-modal-bg').addEventListener('click', e => {
+  if (e.target === document.getElementById('form-modal-bg'))
+    document.getElementById('form-modal-bg').classList.remove('open');
+});
+
+document.getElementById('form-save-btn').addEventListener('click', async () => {
+  const title = document.getElementById('form-title').value.trim();
+  if (!title) { alert('タイトルを入力してください'); return; }
+
+  const isAllDay = document.getElementById('form-allday').checked;
+  let startObj, endObj;
+
+  if (isAllDay) {
+    const d = document.getElementById('form-date').value;
+    if (!d) { alert('日付を入力してください'); return; }
+    startObj = { date: d };
+    const nextDay = new Date(d);
+    nextDay.setDate(nextDay.getDate() + 1);
+    endObj = { date: nextDay.toISOString().split('T')[0] };
+  } else {
+    const s = document.getElementById('form-start').value;
+    const en = document.getElementById('form-end').value;
+    if (!s || !en) { alert('開始・終了時刻を入力してください'); return; }
+    startObj = { dateTime: new Date(s).toISOString(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone };
+    endObj = { dateTime: new Date(en).toISOString(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone };
+  }
+
+  const body = {
+    summary: title,
+    start: startObj,
+    end: endObj,
+    location: document.getElementById('form-location').value.trim() || undefined,
+    description: document.getElementById('form-desc').value.trim() || undefined,
+  };
+
+  try {
+    if (editingEventId) {
+      await gapi.client.calendar.events.update({
+        calendarId: 'primary', eventId: editingEventId, resource: body
+      });
+    } else {
+      await gapi.client.calendar.events.insert({
+        calendarId: 'primary', resource: body
+      });
+    }
+    document.getElementById('form-modal-bg').classList.remove('open');
+    eventsCache = {};
+    loadCurrentView();
+  } catch(e) {
+    alert('保存に失敗しました: ' + e.message);
+  }
+});
+
+function toLocalDatetimeInput(isoStr) {
+  const d = new Date(isoStr);
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 // 初期表示
 setView('month');
