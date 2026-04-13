@@ -124,11 +124,22 @@
     }
     .dow-spacer { border-right: 1px solid var(--border); }
     .dow-cell {
-      font-size: 11px; color: var(--text-sub); font-weight: 500;
+      font-size: 11px; color: var(--text-sub); font-weight: 700;
       display: flex; align-items: center; justify-content: center;
       border-right: 1px solid var(--border);
     }
     .dow-cell:last-child { border-right: none; }
+    .dow-cell.dow-sun { color: #c5221f; }
+    .dow-cell.dow-sat { color: #1a73e8; }
+    /* 日付数字の土日・祝日色 */
+    .day-num.sun { color: #c5221f; }
+    .day-num.sat { color: #1a73e8; }
+    .day-num.holiday { color: #c5221f; }
+    .day-num.today { background: var(--today-bg) !important; color: var(--today-text) !important; }
+    /* 週表示ヘッダーの土日色 */
+    .wv-head-day.wv-sun .wv-day-name, .wv-head-day.wv-sun .wv-day-num { color: #c5221f; }
+    .wv-head-day.wv-sat .wv-day-name, .wv-head-day.wv-sat .wv-day-num { color: #1a73e8; }
+    .wv-day-name { font-size: 11px; font-weight: 700; }
     .weeks-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
     .week-row {
       display: grid; grid-template-columns: var(--col-exp) repeat(7, 1fr);
@@ -169,7 +180,7 @@
 
     /* ── チップ（通常） ── */
     .chip {
-      font-size: 9px; padding: 1px 4px;
+      font-size: 11px; padding: 1px 4px;
       border-radius: 3px; margin-bottom: 1px;
       white-space: nowrap; overflow: hidden;
       text-overflow: clip;
@@ -180,8 +191,8 @@
 
     /* ── 複数日にまたがる帯 ── */
     .chip-span {
-      font-size: 9px; padding: 2px 4px;
-      margin-bottom: 1px;
+      font-size: 11px; padding: 3px 4px;
+      margin-bottom: 1px; min-height: 18px;
       white-space: nowrap; overflow: hidden;
       text-overflow: clip;
       flex-shrink: 0; cursor: pointer;
@@ -233,7 +244,7 @@
     .wv-slot:last-child { border-right: none; }
     .wv-event {
       position: absolute; left: 2px; right: 2px;
-      border-radius: 3px; font-size: 9px; padding: 2px 4px;
+      border-radius: 3px; font-size: 11px; padding: 2px 4px;
       overflow: hidden; text-overflow: clip;
       white-space: nowrap; cursor: pointer; z-index: 1;
     }
@@ -260,7 +271,7 @@
     .dv-event-time { font-size: 10px; opacity: .8; margin-top: 1px; }
 
     /* ── SWIPE ── */
-    #cal-area { touch-action: pan-y; }
+    #cal-area { touch-action: pan-y; user-select: none; }
 
     /* ── DETAIL MODAL ── */
     #modal-bg {
@@ -362,6 +373,11 @@
       .view-btn { padding: 5px 8px; font-size: 12px; }
       .today-btn { display: none; }
       body { padding-bottom: env(safe-area-inset-bottom); }
+      /* スマホ：予定文字を1段階小さく（日付はそのまま） */
+      .chip { font-size: 10px; }
+      .chip-span { font-size: 10px; padding: 2px 4px; min-height: 16px; }
+      .wv-event { font-size: 10px; }
+      .dv-event-title { font-size: 10px; }
     }
   </style>
 </head>
@@ -403,10 +419,13 @@
     <div id="month-view">
       <div class="dow-row">
         <div class="dow-spacer"></div>
-        <div class="dow-cell">日</div><div class="dow-cell">月</div>
-        <div class="dow-cell">火</div><div class="dow-cell">水</div>
-        <div class="dow-cell">木</div><div class="dow-cell">金</div>
-        <div class="dow-cell">土</div>
+        <div class="dow-cell dow-sun">日</div>
+        <div class="dow-cell">月</div>
+        <div class="dow-cell">火</div>
+        <div class="dow-cell">水</div>
+        <div class="dow-cell">木</div>
+        <div class="dow-cell">金</div>
+        <div class="dow-cell dow-sat">土</div>
       </div>
       <div class="weeks-container" id="weeks-container">
         <div class="loading"><div class="spinner"></div>読み込み中...</div>
@@ -632,6 +651,34 @@ calArea.addEventListener('touchend', e => {
   swipeStartX = null; swipeStartY = null;
 }, {passive: true});
 
+// ── 祝日 ──
+const HOLIDAY_CAL = 'ja.japanese#holiday@group.v.calendar.google.com';
+let holidayCache = {}; // "YYYY-M" => Set of "YYYY-M-D"
+
+async function fetchHolidays(year, month) {
+  const key = `${year}-${month}`;
+  if (holidayCache[key]) return holidayCache[key];
+  const timeMin = new Date(year, month, 1).toISOString();
+  const timeMax = new Date(year, month+1, 1).toISOString();
+  try {
+    const res = await gapi.client.calendar.events.list({
+      calendarId: HOLIDAY_CAL, timeMin, timeMax,
+      singleEvents: true, maxResults: 50
+    });
+    const set = new Set();
+    (res.result.items || []).forEach(ev => {
+      if (ev.start?.date) set.add(ev.start.date);
+    });
+    holidayCache[key] = set;
+    return set;
+  } catch(e) { return new Set(); }
+}
+
+function isHoliday(holidays, y, m, d) {
+  const key = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  return holidays.has(key);
+}
+
 // ── API ──
 async function fetchEvents(year, month) {
   const key = `${year}-${month}`;
@@ -677,7 +724,8 @@ function isMultiDay(ev) {
   if (ev.start?.dateTime && ev.end?.dateTime) {
     const s = new Date(ev.start.dateTime);
     const e = new Date(ev.end.dateTime);
-    return s.toDateString() !== e.toDateString();
+    // 日付が違うか、同日でも24時間超えなら複数日
+    return s.toDateString() !== e.toDateString() || (e - s) >= 86400000;
   }
   return false;
 }
@@ -720,10 +768,16 @@ async function loadMonth() {
   const container = document.getElementById('weeks-container');
   container.innerHTML = '<div class="loading"><div class="spinner"></div>読み込み中...</div>';
 
-  const events = await fetchEvents(y, m);
-  const prevEv = m > 0 ? await fetchEvents(y, m-1) : await fetchEvents(y-1, 11);
-  const nextEv = m < 11 ? await fetchEvents(y, m+1) : await fetchEvents(y+1, 0);
+  const [events, prevEv, nextEv, holidays, prevHol, nextHol] = await Promise.all([
+    fetchEvents(y, m),
+    m > 0 ? fetchEvents(y, m-1) : fetchEvents(y-1, 11),
+    m < 11 ? fetchEvents(y, m+1) : fetchEvents(y+1, 0),
+    fetchHolidays(y, m),
+    m > 0 ? fetchHolidays(y, m-1) : fetchHolidays(y-1, 11),
+    m < 11 ? fetchHolidays(y, m+1) : fetchHolidays(y+1, 0),
+  ]);
   const allEvents = [...prevEv, ...events, ...nextEv];
+  const allHolidays = new Set([...holidays, ...prevHol, ...nextHol]);
 
   const first = new Date(y, m, 1).getDay();
   const dim = new Date(y, m+1, 0).getDate();
@@ -802,7 +856,14 @@ async function loadMonth() {
       cell.className = 'day-cell' + (isExp ? ' scrollable' : '');
 
       const dn = document.createElement('div');
-      dn.className = 'day-num' + (isToday ? ' today' : '') + (isOther ? ' other-month' : '');
+      const dow = new Date(yr, mo, ac).getDay();
+      const isHol = isHoliday(allHolidays, yr, mo, ac);
+      let dnClass = 'day-num';
+      if (isToday) dnClass += ' today';
+      else if (isHol || dow === 0) dnClass += ' sun holiday';
+      else if (dow === 6) dnClass += ' sat';
+      if (isOther) dnClass += ' other-month';
+      dn.className = dnClass;
       dn.textContent = ac;
       dn.addEventListener('click', e => {
         e.stopPropagation();
@@ -889,8 +950,9 @@ async function loadWeek() {
   head.innerHTML = '<div class="wv-head-spacer"></div>';
   days.forEach(dd => {
     const isT = dd.toDateString() === today.toDateString();
+    const dow = dd.getDay();
     const div = document.createElement('div');
-    div.className = 'wv-head-day';
+    div.className = 'wv-head-day' + (dow === 0 ? ' wv-sun' : dow === 6 ? ' wv-sat' : '');
     div.innerHTML = `<div class="wv-day-name">${DOW[dd.getDay()]}</div>
       <div class="wv-day-num${isT?' today':''}">${dd.getDate()}</div>`;
     div.addEventListener('click', () => { selectedDate = new Date(dd); cur = new Date(dd); setView('day'); });
@@ -1138,32 +1200,38 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').ca
 
 // ── 横スワイプで前後移動 ──
 (function() {
-  let startX = 0, startY = 0, moved = false;
+  let startX = 0, startY = 0, tracking = false;
   const area = document.getElementById('cal-area');
 
   area.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) return;
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
-    moved = false;
+    tracking = true;
   }, { passive: true });
 
   area.addEventListener('touchmove', e => {
-    moved = true;
-  }, { passive: true });
+    if (!tracking || e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    // 横方向が明確に支配的な場合のみスクロールを抑制
+    if (Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(dx) > 10) {
+      e.preventDefault();
+    }
+  }, { passive: false });
 
   area.addEventListener('touchend', e => {
-    if (!moved) return;
+    if (!tracking) return;
+    tracking = false;
     const dx = e.changedTouches[0].clientX - startX;
     const dy = e.changedTouches[0].clientY - startY;
-    // 横方向が支配的なスワイプのみ反応（縦スクロールを妨げない）
+    // 横方向50px以上 かつ 縦より横が1.5倍以上のみ反応
     if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
     if (dx < 0) {
-      // 左スワイプ → 次へ
       if (view === 'month') { cur = new Date(cur.getFullYear(), cur.getMonth()+1, 1); expandedWeek = null; }
       else if (view === 'week') cur = new Date(cur.getTime() + 7*86400000);
       else { cur = new Date(cur.getTime() + 86400000); selectedDate = new Date(cur); }
     } else {
-      // 右スワイプ → 前へ
       if (view === 'month') { cur = new Date(cur.getFullYear(), cur.getMonth()-1, 1); expandedWeek = null; }
       else if (view === 'week') cur = new Date(cur.getTime() - 7*86400000);
       else { cur = new Date(cur.getTime() - 86400000); selectedDate = new Date(cur); }
