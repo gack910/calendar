@@ -522,6 +522,32 @@ const COLORS = [
 const DOW = ['日','月','火','水','木','金','土'];
 const HOURS = Array.from({length:24},(_,i)=>i);
 
+// ── トークン保存・復元 ──
+const TOKEN_KEY = 'mycal_token';
+
+function saveToken(token) {
+  try {
+    sessionStorage.setItem(TOKEN_KEY, JSON.stringify({
+      token,
+      expires: Date.now() + (token.expires_in - 60) * 1000
+    }));
+  } catch(e) {}
+}
+
+function loadToken() {
+  try {
+    const raw = sessionStorage.getItem(TOKEN_KEY);
+    if (!raw) return null;
+    const { token, expires } = JSON.parse(raw);
+    if (Date.now() > expires) { sessionStorage.removeItem(TOKEN_KEY); return null; }
+    return token;
+  } catch(e) { return null; }
+}
+
+function clearToken() {
+  try { sessionStorage.removeItem(TOKEN_KEY); } catch(e) {}
+}
+
 // ── GAPI 初期化 ──
 function gapiInit() {
   gapi.client.init({}).then(() => {
@@ -538,6 +564,8 @@ function gisInit() {
     scope: SCOPES,
     callback: (resp) => {
       if (resp.error) return;
+      saveToken(resp);
+      gapi.client.setToken(resp);
       showApp();
       loadCurrentView();
     }
@@ -547,11 +575,20 @@ function gisInit() {
 }
 
 function maybeReady() {
-  if (gapiLoaded && gisLoaded) {
-    document.getElementById('sign-in-btn').addEventListener('click', () => {
-      tokenClient.requestAccessToken();
-    });
+  if (!gapiLoaded || !gisLoaded) return;
+
+  // 保存済みトークンがあれば自動ログイン
+  const saved = loadToken();
+  if (saved) {
+    gapi.client.setToken(saved);
+    showApp();
+    loadCurrentView();
+    return;
   }
+
+  document.getElementById('sign-in-btn').addEventListener('click', () => {
+    tokenClient.requestAccessToken();
+  });
 }
 
 window.gapiInit = gapiInit;
@@ -615,6 +652,7 @@ document.getElementById('today-btn').addEventListener('click', () => {
 });
 document.getElementById('user-btn').addEventListener('click', () => {
   if (confirm('ログアウトしますか？')) {
+    clearToken();
     google.accounts.oauth2.revoke(gapi.client.getToken()?.access_token, () => {
       gapi.client.setToken(null);
       location.reload();
