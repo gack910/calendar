@@ -637,18 +637,32 @@ document.getElementById('user-btn').addEventListener('click', () => {
 let swipeStartX = null, swipeStartY = null;
 const calArea = document.getElementById('cal-area');
 calArea.addEventListener('touchstart', e => {
+  if (e.touches.length !== 1) return;
   swipeStartX = e.touches[0].clientX;
   swipeStartY = e.touches[0].clientY;
 }, {passive: true});
+calArea.addEventListener('touchmove', e => {
+  if (swipeStartX === null || e.touches.length !== 1) return;
+  const dx = e.touches[0].clientX - swipeStartX;
+  const dy = e.touches[0].clientY - swipeStartY;
+  if (Math.abs(dx) > Math.abs(dy) * 1.5 && Math.abs(dx) > 10) e.preventDefault();
+}, {passive: false});
 calArea.addEventListener('touchend', e => {
   if (swipeStartX === null) return;
   const dx = e.changedTouches[0].clientX - swipeStartX;
   const dy = e.changedTouches[0].clientY - swipeStartY;
-  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
-    if (dx < 0) document.getElementById('next-btn').click();
-    else document.getElementById('prev-btn').click();
-  }
   swipeStartX = null; swipeStartY = null;
+  if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+  if (dx < 0) {
+    if (view === 'month') { cur = new Date(cur.getFullYear(), cur.getMonth()+1, 1); expandedWeek = null; }
+    else if (view === 'week') cur = new Date(cur.getTime() + 7*86400000);
+    else { cur = new Date(cur.getTime() + 86400000); selectedDate = new Date(cur); }
+  } else {
+    if (view === 'month') { cur = new Date(cur.getFullYear(), cur.getMonth()-1, 1); expandedWeek = null; }
+    else if (view === 'week') cur = new Date(cur.getTime() - 7*86400000);
+    else { cur = new Date(cur.getTime() - 86400000); selectedDate = new Date(cur); }
+  }
+  loadCurrentView();
 }, {passive: true});
 
 // ── 祝日 ──
