@@ -373,11 +373,29 @@
       .view-btn { padding: 5px 8px; font-size: 12px; }
       .today-btn { display: none; }
       body { padding-bottom: env(safe-area-inset-bottom); }
-      /* スマホ：予定文字を1段階小さく（日付はそのまま） */
       .chip { font-size: 10px; }
       .chip-span { font-size: 10px; padding: 2px 4px; min-height: 16px; }
       .wv-event { font-size: 10px; }
       .dv-event-title { font-size: 10px; }
+    }
+
+    /* ── 横画面 ── */
+    @media (orientation: landscape) and (max-height: 500px) {
+      .top-header { height: 38px; padding: 0 10px; }
+      .cal-title { font-size: 14px; }
+      .nav-btn { padding: 2px 8px; font-size: 12px; }
+      .view-btn { padding: 3px 8px; font-size: 11px; }
+      .today-btn { padding: 2px 8px; font-size: 12px; display: none; }
+      .user-btn { width: 26px; height: 26px; font-size: 11px; }
+      :root { --header-h: 38px; --dow-h: 22px; }
+      .dow-row { height: 22px; }
+      .dow-cell { font-size: 10px; }
+      .chip { font-size: 10px; }
+      .chip-span { font-size: 10px; padding: 1px 4px; min-height: 14px; }
+      .wv-time { height: 36px; font-size: 9px; }
+      .wv-slot { height: 36px; }
+      .dv-time { height: 36px; font-size: 9px; }
+      .dv-slot { height: 36px; }
     }
   </style>
 </head>
@@ -523,7 +541,7 @@
 // ════════════════════════════════
 //  ★ ここに自分のクライアントIDを貼る
 // ════════════════════════════════
-const CLIENT_ID = '66585014637-9drc6lc2o28um48gq7o6k3iku296o2vb.apps.googleusercontent.com';
+const CLIENT_ID = 'YOUR_CLIENT_ID.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/calendar';
 const DISCOVERY = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
 
@@ -541,21 +559,61 @@ const COLORS = [
 const DOW = ['日','月','火','水','木','金','土'];
 const HOURS = Array.from({length:24},(_,i)=>i);
 
-// ── トークン保存 ──
+// ── トークン保存（localStorage：ブラウザ閉じても残る）──
 const TOKEN_KEY = 'mycal_token';
+
 function saveToken(t) {
-  try { sessionStorage.setItem(TOKEN_KEY, JSON.stringify({token:t, expires:Date.now()+(t.expires_in-60)*1000})); } catch(e){}
+  try {
+    localStorage.setItem(TOKEN_KEY, JSON.stringify({
+      token: t,
+      expires: Date.now() + (t.expires_in - 60) * 1000
+    }));
+  } catch(e) {}
 }
 function loadToken() {
   try {
-    const r = sessionStorage.getItem(TOKEN_KEY);
+    const r = localStorage.getItem(TOKEN_KEY);
     if (!r) return null;
     const {token, expires} = JSON.parse(r);
-    if (Date.now() > expires) { sessionStorage.removeItem(TOKEN_KEY); return null; }
+    if (Date.now() > expires) return null;
     return token;
   } catch(e) { return null; }
 }
-function clearToken() { try { sessionStorage.removeItem(TOKEN_KEY); } catch(e){} }
+function clearToken() {
+  try { localStorage.removeItem(TOKEN_KEY); } catch(e) {}
+}
+
+// ── ローカルキャッシュ（IndexedDB）でカレンダーデータを永続化 ──
+const CAL_DB = 'mycal-data', CAL_VER = 1, CAL_STORE = 'events';
+let calDb = null;
+
+function openCalDB() {
+  return new Promise((res, rej) => {
+    if (calDb) return res(calDb);
+    const req = indexedDB.open(CAL_DB, CAL_VER);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(CAL_STORE, {keyPath:'key'});
+    req.onsuccess = e => { calDb = e.target.result; res(calDb); };
+    req.onerror = () => rej(req.error);
+  });
+}
+async function saveCalCache(key, data) {
+  try {
+    const d = await openCalDB();
+    const tx = d.transaction(CAL_STORE, 'readwrite');
+    tx.objectStore(CAL_STORE).put({key, data, savedAt: Date.now()});
+  } catch(e) {}
+}
+async function loadCalCache(key) {
+  try {
+    const d = await openCalDB();
+    return new Promise((res) => {
+      const tx = d.transaction(CAL_STORE, 'readonly');
+      const req = tx.objectStore(CAL_STORE).get(key);
+      req.onsuccess = () => res(req.result?.data || null);
+      req.onerror = () => res(null);
+    });
+  } catch(e) { return null; }
+}
 
 // ── GAPI ──
 function gapiInit() {
@@ -563,24 +621,54 @@ function gapiInit() {
     gapi.client.load(DISCOVERY).then(() => { gapiLoaded = true; maybeReady(); });
   });
 }
+
 function gisInit() {
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID, scope: SCOPES,
     callback: (resp) => {
-      if (resp.error) return;
+      if (resp.error) {
+        // サイレント認証失敗→ログインボタンを表示
+        document.getElementById('auth-overlay').style.display = 'flex';
+        document.getElementById('app').classList.remove('visible');
+        return;
+      }
       saveToken(resp);
       gapi.client.setToken(resp);
-      showApp(); loadCurrentView();
+      // 認証完了後にキャッシュクリアして最新データ取得
+      eventsCache = {};
+      holidayCache = {};
+      loadCurrentView();
     }
   });
   gisLoaded = true;
   maybeReady();
 }
+
 function maybeReady() {
   if (!gapiLoaded || !gisLoaded) return;
+
   const saved = loadToken();
-  if (saved) { gapi.client.setToken(saved); showApp(); loadCurrentView(); return; }
-  document.getElementById('sign-in-btn').addEventListener('click', () => tokenClient.requestAccessToken());
+  if (saved) {
+    // 有効なトークンあり→そのまま使う
+    gapi.client.setToken(saved);
+    showApp();
+  } else {
+    // トークンなし or 期限切れ→サイレント再認証を試みる
+    showApp(); // まずキャッシュ表示
+    silentSignIn();
+  }
+
+  document.getElementById('sign-in-btn').addEventListener('click', () => {
+    tokenClient.requestAccessToken({prompt: 'consent'});
+  });
+}
+
+function silentSignIn() {
+  try {
+    tokenClient.requestAccessToken({prompt: ''});
+  } catch(e) {
+    // 失敗してもキャッシュ表示は継続
+  }
 }
 window.gapiInit = gapiInit;
 window.gisInit = gisInit;
@@ -599,6 +687,7 @@ setTimeout(() => {
 function showApp() {
   document.getElementById('auth-overlay').style.display = 'none';
   document.getElementById('app').classList.add('visible');
+  loadCurrentView(); // キャッシュから即表示
 }
 function setView(v) {
   view = v;
@@ -700,7 +789,7 @@ document.getElementById('user-btn').addEventListener('click', () => {
 
 // ── 祝日 ──
 const HOLIDAY_CAL = 'ja.japanese#holiday@group.v.calendar.google.com';
-let holidayCache = {}; // "YYYY-M" => Set of "YYYY-M-D"
+let holidayCache = {}; // "YYYY-M" => Map<"YYYY-MM-DD", name>
 
 async function fetchHolidays(year, month) {
   const key = `${year}-${month}`;
@@ -712,34 +801,49 @@ async function fetchHolidays(year, month) {
       calendarId: HOLIDAY_CAL, timeMin, timeMax,
       singleEvents: true, maxResults: 50
     });
-    const set = new Set();
+    const map = new Map();
     (res.result.items || []).forEach(ev => {
-      if (ev.start?.date) set.add(ev.start.date);
+      if (ev.start?.date) map.set(ev.start.date, ev.summary || '祝日');
     });
-    holidayCache[key] = set;
-    return set;
-  } catch(e) { return new Set(); }
+    holidayCache[key] = map;
+    return map;
+  } catch(e) { return new Map(); }
+}
+
+function getHolidayName(holidays, y, m, d) {
+  const key = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  return holidays.get(key) || null;
 }
 
 function isHoliday(holidays, y, m, d) {
-  const key = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-  return holidays.has(key);
+  return getHolidayName(holidays, y, m, d) !== null;
 }
 
 // ── API ──
 async function fetchEvents(year, month) {
-  const key = `${year}-${month}`;
+  const key = `ev-${year}-${month}`;
   if (eventsCache[key]) return eventsCache[key];
+  // IndexedDBキャッシュから読む
+  const cached = await loadCalCache(key);
+  if (cached) { eventsCache[key] = cached; return cached; }
+  // キャッシュなし→APIから取得
+  return await fetchEventsFromAPI(year, month);
+}
+
+async function fetchEventsFromAPI(year, month) {
+  const key = `ev-${year}-${month}`;
   const timeMin = new Date(year, month, 1).toISOString();
   const timeMax = new Date(year, month+1, 1).toISOString();
   try {
     const res = await gapi.client.calendar.events.list({
       calendarId: 'primary', timeMin, timeMax,
-      singleEvents: true, orderBy: 'startTime', maxResults: 500
+      singleEvents: true, orderBy: 'startTime', maxResults: 2500
     });
-    eventsCache[key] = res.result.items || [];
-    return eventsCache[key];
-  } catch(e) { return []; }
+    const data = res.result.items || [];
+    eventsCache[key] = data;
+    await saveCalCache(key, data);
+    return data;
+  } catch(e) { return eventsCache[key] || []; }
 }
 async function fetchEventsRange(start, end) {
   try {
@@ -777,7 +881,8 @@ function isMultiDay(ev) {
   return false;
 }
 
-function colorForEvent(ev, idx) {
+function colorForEvent(ev) {
+  // colorIdが設定されていればそれを優先
   const cm = {
     '1':{bg:'#a4bdfc',text:'#1a237e'},'2':{bg:'#7ae7bf',text:'#1b5e20'},
     '3':{bg:'#dbadff',text:'#4a148c'},'4':{bg:'#ff887c',text:'#b71c1c'},
@@ -787,7 +892,11 @@ function colorForEvent(ev, idx) {
     '11':{bg:'#dc2127',text:'#fff'}
   };
   if (ev.colorId && cm[ev.colorId]) return cm[ev.colorId];
-  return COLORS[idx % COLORS.length];
+  // colorIdなしの場合はevent.idのハッシュで色を固定（ビュー間で統一）
+  const id = ev.id || '';
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) & 0xffff;
+  return COLORS[hash % COLORS.length];
 }
 function formatTime(s) {
   if (!s) return '終日';
@@ -840,7 +949,9 @@ async function loadMonth() {
   }
 
   const areaH = document.getElementById('cal-area').clientHeight - 28;
-  const EXPANDED_H = 200, COLLAPSED_MIN = 32;
+  const EXPANDED_H = 200;
+  const isLandscape = window.matchMedia('(orientation: landscape) and (max-height: 500px)').matches;
+  const COLLAPSED_MIN = isLandscape ? 20 : 32;
   let collapsedH;
   if (expandedWeek !== null) {
     collapsedH = Math.max(COLLAPSED_MIN, Math.floor((areaH - EXPANDED_H) / (weekCount - 1)));
@@ -901,6 +1012,10 @@ async function loadMonth() {
 
       const cell = document.createElement('div');
       cell.className = 'day-cell' + (isExp ? ' scrollable' : '');
+      cell.addEventListener('click', e => {
+        // チップ・day-num以外の空白部分タップで追加フォームを開く
+        if (e.target === cell) openFormModal(null, new Date(yr, mo, ac));
+      });
 
       const dn = document.createElement('div');
       const dow = new Date(yr, mo, ac).getDay();
@@ -918,6 +1033,17 @@ async function loadMonth() {
       });
       cell.appendChild(dn);
 
+      // 祝日チップ（赤・終日表示）
+      const holName = getHolidayName(allHolidays, yr, mo, ac);
+      if (holName) {
+        const holChip = document.createElement('div');
+        holChip.className = 'chip';
+        holChip.style.background = '#fce8e6';
+        holChip.style.color = '#c5221f';
+        holChip.textContent = holName;
+        cell.appendChild(holChip);
+      }
+
       // 複数日予定の帯
       spanEvents.forEach((ev, idx) => {
         const es = new Date(ev.start?.dateTime || ev.start?.date);
@@ -928,7 +1054,7 @@ async function loadMonth() {
 
         const isStart = cellDate.toDateString() === es.toDateString();
         const isEnd = cellDate.toDateString() === ee.toDateString();
-        const col = colorForEvent(ev, idx);
+        const col = colorForEvent(ev);
 
         const chip = document.createElement('div');
         let spanClass = 'chip-span';
@@ -939,7 +1065,7 @@ async function loadMonth() {
         chip.className = spanClass;
         chip.style.background = col.bg;
         chip.style.color = col.text;
-        chip.textContent = isStart ? (ev.summary || '（タイトルなし）') : '';
+        chip.textContent = (isStart || (!isStart && !isEnd)) ? (ev.summary || '（タイトルなし）') : '';
         chip.addEventListener('click', e => { e.stopPropagation(); showModal(ev); });
         cell.appendChild(chip);
       });
@@ -970,7 +1096,7 @@ async function loadMonth() {
 }
 
 function makeChip(ev, idx) {
-  const col = colorForEvent(ev, idx);
+  const col = colorForEvent(ev);
   const chip = document.createElement('div');
   chip.className = 'chip';
   chip.style.background = col.bg;
@@ -1020,48 +1146,91 @@ async function loadWeek() {
   gridHtml += '</div>';
   scroll.innerHTML = gridHtml;
 
+  // スロット空白タップで予定追加（週表示）
+  scroll.querySelectorAll('.wv-slot').forEach(slot => {
+    slot.addEventListener('click', e => {
+      if (e.target !== slot) return;
+      const sy = parseInt(slot.dataset.y), sm = parseInt(slot.dataset.m);
+      const sd = parseInt(slot.dataset.d), sh = parseInt(slot.dataset.h);
+      openFormModal(null, new Date(sy, sm, sd), false, sh);
+    });
+  });
+
   evs.forEach((ev, idx) => {
     if (ev.start?.date) return;
     const s = new Date(ev.start.dateTime);
-    const e = new Date(ev.end.dateTime);
-    const slot = scroll.querySelector(`.wv-slot[data-y="${s.getFullYear()}"][data-m="${s.getMonth()}"][data-d="${s.getDate()}"][data-h="${s.getHours()}"]`);
-    if (!slot) return;
-    const col = colorForEvent(ev, idx);
-    const h = Math.max((e-s)/60000/60*48, 18);
-    const el = document.createElement('div');
-    el.className = 'wv-event';
-    el.style.cssText = `top:${s.getMinutes()/60*48}px;height:${h}px;background:${col.bg};color:${col.text}`;
-    el.textContent = ev.summary || '（タイトルなし）';
-    el.addEventListener('click', () => showModal(ev));
-    slot.appendChild(el);
-  });
-  scroll.scrollTop = 8 * 48;
-}
-
-// ── 日表示 ──
 async function loadDay() {
   const y = cur.getFullYear(), m = cur.getMonth(), d = cur.getDate();
   document.getElementById('cal-title').textContent = `${m+1}月${d}日（${DOW[new Date(y,m,d).getDay()]}）`;
   const scroll = document.getElementById('dv-scroll');
   scroll.innerHTML = '<div class="loading"><div class="spinner"></div>読み込み中...</div>';
+
+  // その日を含む範囲で予定取得（前日22時〜翌日2時まで広めに）
+  const dayStart = new Date(y, m, d, 0, 0, 0);
+  const dayEnd = new Date(y, m, d, 23, 59, 59);
   const evs = await fetchEventsRange(new Date(y,m,d), new Date(y,m,d+1));
+
+  // 日またぎ予定を上部帯として分離
+  const thisDayStr = new Date(y, m, d).toDateString();
+  const alldayEvs = evs.filter(ev => {
+    if (ev.start?.date) return true; // 終日予定
+    const s = new Date(ev.start.dateTime);
+    const e = new Date(ev.end.dateTime);
+    return s.toDateString() !== e.toDateString(); // 日またぎ
+  });
+  const timedEvs = evs.filter(ev => {
+    if (ev.start?.date) return false;
+    const s = new Date(ev.start.dateTime);
+    const e = new Date(ev.end.dateTime);
+    // 同日内 かつ その日に開始する予定のみ
+    return s.toDateString() === e.toDateString() && s.toDateString() === thisDayStr;
+  });
+
+  // 上部帯エリア（終日・日またぎ）
+  let alldayHtml = '';
+  if (alldayEvs.length > 0) {
+    alldayHtml = '<div id="dv-allday" style="border-bottom:1px solid var(--border);padding:4px 0 4px 56px">';
+    alldayEvs.forEach(ev => {
+      const col = colorForEvent(ev);
+      alldayHtml += `<div class="chip" style="background:${col.bg};color:${col.text};margin-bottom:2px;cursor:pointer" data-evid="${ev.id}">${ev.summary || '（タイトルなし）'}</div>`;
+    });
+    alldayHtml += '</div>';
+  }
 
   let gridHtml = '<div class="dv-grid">';
   HOURS.forEach(h => { gridHtml += `<div class="dv-time">${h}:00</div><div class="dv-slot" data-h="${h}"></div>`; });
   gridHtml += '</div>';
-  scroll.innerHTML = gridHtml;
+  scroll.innerHTML = alldayHtml + gridHtml;
 
-  evs.forEach((ev, idx) => {
-    if (ev.start?.date) return;
+  // 上部帯のクリックイベント
+  alldayEvs.forEach(ev => {
+    const chips = scroll.querySelectorAll(`[data-evid="${ev.id}"]`);
+    chips.forEach(chip => chip.addEventListener('click', () => showModal(ev)));
+  });
+
+  // スロット空白タップで予定追加（日表示）
+  scroll.querySelectorAll('.dv-slot').forEach(slot => {
+    slot.addEventListener('click', e => {
+      if (e.target !== slot) return;
+      openFormModal(null, new Date(y, m, d), false, parseInt(slot.dataset.h));
+    });
+  });
+
+  // 通常予定（同日内のみ、24時間グリッドにクリップ）
+  timedEvs.forEach(ev => {
     const s = new Date(ev.start.dateTime);
     const e = new Date(ev.end.dateTime);
-    const slot = scroll.querySelector(`.dv-slot[data-h="${s.getHours()}"]`);
+    // その日の範囲内にクリップ
+    const clipStart = s < dayStart ? dayStart : s;
+    const clipEnd = e > dayEnd ? dayEnd : e;
+    const slot = scroll.querySelector(`.dv-slot[data-h="${clipStart.getHours()}"]`);
     if (!slot) return;
-    const col = colorForEvent(ev, idx);
-    const h = Math.max((e-s)/60000/60*48, 20);
+    const col = colorForEvent(ev);
+    const durMin = (clipEnd - clipStart) / 60000;
+    const h = Math.max(durMin / 60 * 48, 20);
     const el = document.createElement('div');
     el.className = 'dv-event';
-    el.style.cssText = `top:${s.getMinutes()/60*48}px;height:${h}px;background:${col.bg};color:${col.text}`;
+    el.style.cssText = `top:${clipStart.getMinutes()/60*48}px;height:${h}px;background:${col.bg};color:${col.text}`;
     el.innerHTML = `<div class="dv-event-title">${ev.summary || '（タイトルなし）'}</div>
       <div class="dv-event-time">${formatTime(ev.start.dateTime)} – ${formatTime(ev.end.dateTime)}</div>`;
     el.addEventListener('click', () => showModal(ev));
@@ -1104,10 +1273,29 @@ function showModal(ev) {
   currentEvent = ev;
   document.getElementById('modal-title').textContent = ev.summary || '（タイトルなし）';
   const isAllDay = !!ev.start?.date;
-  const dateStr = formatDateStr(ev.start?.dateTime || ev.start?.date);
-  document.getElementById('modal-time').textContent = isAllDay
-    ? dateStr + ' 終日'
-    : `${dateStr} ${formatTime(ev.start?.dateTime)} – ${formatTime(ev.end?.dateTime)}`;
+  const startStr = formatDateStr(ev.start?.dateTime || ev.start?.date);
+
+  let timeText;
+  if (isAllDay) {
+    // 終日：終了日は1日戻して表示
+    const endRaw = new Date(ev.end?.date);
+    endRaw.setDate(endRaw.getDate() - 1);
+    const endStr = formatDateStr(endRaw.toISOString());
+    timeText = startStr === endStr
+      ? startStr + ' 終日'
+      : `${startStr} 〜 ${endStr} 終日`;
+  } else {
+    const startDate = new Date(ev.start.dateTime);
+    const endDate = new Date(ev.end.dateTime);
+    const isSameDay = startDate.toDateString() === endDate.toDateString();
+    if (isSameDay) {
+      timeText = `${startStr} ${formatTime(ev.start.dateTime)} – ${formatTime(ev.end.dateTime)}`;
+    } else {
+      const endStr = formatDateStr(ev.end.dateTime);
+      timeText = `${startStr} ${formatTime(ev.start.dateTime)} 〜 ${endStr} ${formatTime(ev.end.dateTime)}`;
+    }
+  }
+  document.getElementById('modal-time').textContent = timeText;
   const loc = ev.location;
   document.getElementById('modal-loc-row').style.display = loc ? '' : 'none';
   document.getElementById('modal-loc').textContent = loc || '';
@@ -1129,7 +1317,7 @@ document.getElementById('modal-copy-btn').addEventListener('click', () => {
 document.getElementById('modal-delete-btn').addEventListener('click', async () => {
   if (!confirm(`「${currentEvent.summary || '予定'}」を削除しますか？`)) return;
   try {
-    await gapi.client.calendar.events.delete({ calendarId: 'primary', eventId: currentEvent.id });
+    await apiDelete(currentEvent.id);
     document.getElementById('modal-bg').classList.remove('open');
     eventsCache = {}; loadCurrentView();
   } catch(e) { alert('削除に失敗しました: ' + e.message); }
@@ -1137,7 +1325,7 @@ document.getElementById('modal-delete-btn').addEventListener('click', async () =
 
 // ── フォームモーダル ──
 let editingEventId = null;
-function openFormModal(ev = null, defaultDate = null, isCopy = false) {
+function openFormModal(ev = null, defaultDate = null, isCopy = false, defaultHour = 9) {
   editingEventId = (ev && !isCopy) ? ev.id : null;
   document.getElementById('form-modal-title').textContent = isCopy ? '予定を複製' : ev ? '予定を編集' : '予定を追加';
   document.getElementById('form-repeat').value = 'none';
@@ -1164,9 +1352,12 @@ function openFormModal(ev = null, defaultDate = null, isCopy = false) {
     if (defaultDate) {
       const d = defaultDate;
       const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const hh = String(defaultHour).padStart(2,'0');
+      const eh = String(defaultHour).padStart(2,'0');
+      const em = '30';
       document.getElementById('form-date').value = ds;
-      document.getElementById('form-start').value = `${ds}T09:00`;
-      document.getElementById('form-end').value = `${ds}T10:00`;
+      document.getElementById('form-start').value = `${ds}T${hh}:00`;
+      document.getElementById('form-end').value = `${ds}T${eh}:${em}`;
     }
   }
   document.getElementById('form-modal-bg').classList.add('open');
@@ -1180,6 +1371,13 @@ function toggleAlldayFields(v) {
 document.getElementById('form-allday').addEventListener('change', e => toggleAlldayFields(e.target.checked));
 document.getElementById('form-repeat').addEventListener('change', e => {
   document.getElementById('form-repeat-end-row').style.display = e.target.value !== 'none' ? '' : 'none';
+});
+document.getElementById('form-start').addEventListener('change', e => {
+  const startVal = e.target.value;
+  if (!startVal) return;
+  const startDate = new Date(startVal);
+  const endDate = new Date(startDate.getTime() + 30 * 60 * 1000);
+  document.getElementById('form-end').value = toLocalDatetimeInput(endDate.toISOString());
 });
 document.getElementById('form-cancel-btn').addEventListener('click', () => document.getElementById('form-modal-bg').classList.remove('open'));
 document.getElementById('form-modal-bg').addEventListener('click', e => { if (e.target === document.getElementById('form-modal-bg')) document.getElementById('form-modal-bg').classList.remove('open'); });
@@ -1226,9 +1424,9 @@ document.getElementById('form-save-btn').addEventListener('click', async () => {
 
   try {
     if (editingEventId) {
-      await gapi.client.calendar.events.update({ calendarId: 'primary', eventId: editingEventId, resource: body });
+      await apiUpdate(editingEventId, body);
     } else {
-      await gapi.client.calendar.events.insert({ calendarId: 'primary', resource: body });
+      await apiInsert(body);
     }
     document.getElementById('form-modal-bg').classList.remove('open');
     eventsCache = {}; loadCurrentView();
@@ -1241,9 +1439,145 @@ function toLocalDatetimeInput(s) {
   return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
+// ── オフラインキュー（IndexedDB）──
+const DB_NAME = 'mycal-offline', DB_VER = 1, STORE = 'queue';
+let db = null;
+
+function openDB() {
+  return new Promise((res, rej) => {
+    if (db) return res(db);
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(STORE, {keyPath:'id', autoIncrement:true});
+    req.onsuccess = e => { db = e.target.result; res(db); };
+    req.onerror = () => rej(req.error);
+  });
+}
+
+async function enqueue(op) {
+  const d = await openDB();
+  return new Promise((res, rej) => {
+    const tx = d.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).add({...op, queuedAt: Date.now()});
+    tx.oncomplete = res;
+    tx.onerror = () => rej(tx.error);
+  });
+}
+
+async function dequeue(id) {
+  const d = await openDB();
+  return new Promise((res, rej) => {
+    const tx = d.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).delete(id);
+    tx.oncomplete = res;
+    tx.onerror = () => rej(tx.error);
+  });
+}
+
+async function getAllQueued() {
+  const d = await openDB();
+  return new Promise((res, rej) => {
+    const tx = d.transaction(STORE, 'readonly');
+    const req = tx.objectStore(STORE).getAll();
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
+  });
+}
+
+// キューをAPIに送信する
+async function flushQueue() {
+  const items = await getAllQueued();
+  if (!items.length) return;
+  const token = gapi.client.getToken();
+  if (!token) return; // 未ログイン時はスキップ
+
+  let flushed = 0;
+  for (const item of items) {
+    try {
+      if (item.type === 'insert') {
+        await gapi.client.calendar.events.insert({ calendarId: 'primary', resource: item.body });
+      } else if (item.type === 'update') {
+        await gapi.client.calendar.events.update({ calendarId: 'primary', eventId: item.eventId, resource: item.body });
+      } else if (item.type === 'delete') {
+        await gapi.client.calendar.events.delete({ calendarId: 'primary', eventId: item.eventId });
+      }
+      await dequeue(item.id);
+      flushed++;
+    } catch(e) {
+      console.warn('flush failed:', e);
+      break; // エラーが出たら残りは次回に
+    }
+  }
+  if (flushed > 0) {
+    eventsCache = {};
+    loadCurrentView();
+    showOfflineStatus(`${flushed}件の変更をGoogleカレンダーに同期しました`);
+  }
+}
+
+// オフライン状態バナー表示
+function showOfflineStatus(msg) {
+  let banner = document.getElementById('offline-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'offline-banner';
+    banner.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#202124;color:#fff;font-size:13px;padding:8px 16px;border-radius:20px;z-index:200;transition:opacity .3s';
+    document.body.appendChild(banner);
+  }
+  banner.textContent = msg;
+  banner.style.opacity = '1';
+  clearTimeout(banner._t);
+  banner._t = setTimeout(() => { banner.style.opacity = '0'; }, 3000);
+}
+
+// オンライン復帰時に自動フラッシュ
+window.addEventListener('online', () => {
+  showOfflineStatus('オンラインに復帰しました。同期中...');
+  setTimeout(flushQueue, 1000);
+});
+window.addEventListener('offline', () => {
+  showOfflineStatus('オフラインです。変更はオンライン復帰後に同期されます');
+});
+
+// ── API呼び出し（オフライン対応版）──
+async function apiInsert(body) {
+  if (!navigator.onLine) {
+    await enqueue({type:'insert', body});
+    showOfflineStatus('オフライン保存しました。復帰後に同期されます');
+    return null;
+  }
+  return gapi.client.calendar.events.insert({ calendarId: 'primary', resource: body });
+}
+
+async function apiUpdate(eventId, body) {
+  if (!navigator.onLine) {
+    await enqueue({type:'update', eventId, body});
+    showOfflineStatus('オフライン保存しました。復帰後に同期されます');
+    return null;
+  }
+  return gapi.client.calendar.events.update({ calendarId: 'primary', eventId, resource: body });
+}
+
+async function apiDelete(eventId) {
+  if (!navigator.onLine) {
+    await enqueue({type:'delete', eventId});
+    showOfflineStatus('オフライン削除しました。復帰後に同期されます');
+    return null;
+  }
+  return gapi.client.calendar.events.delete({ calendarId: 'primary', eventId });
+}
+
 // 初期表示
 setView('month');
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+// 起動時にキューが残っていれば同期
+if (navigator.onLine) setTimeout(flushQueue, 2000);
+
+// 画面の向き変更時に再描画
+window.addEventListener('orientationchange', () => setTimeout(() => loadCurrentView(), 300));
+window.addEventListener('resize', () => {
+  clearTimeout(window._resizeT);
+  window._resizeT = setTimeout(() => loadCurrentView(), 200);
+});
 
 
 </script>

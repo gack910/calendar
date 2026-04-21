@@ -1,4 +1,4 @@
-const CACHE = 'mycal-v4';
+const CACHE = 'mycal-v14';
 const ASSETS = [
   './',
   './index.html',
@@ -22,12 +22,23 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Google APIへのリクエストはキャッシュしない
+  // Google APIへのリクエストはキャッシュしない（ネットワーク優先）
   if (e.request.url.includes('googleapis.com') ||
-      e.request.url.includes('accounts.google.com')) {
+      e.request.url.includes('accounts.google.com') ||
+      e.request.url.includes('gsi/client')) {
     return;
   }
+  // アプリのリソースはキャッシュ優先（オフライン対応）
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
+    caches.match(e.request).then(cached => {
+      if (cached) return cached;
+      return fetch(e.request).then(res => {
+        if (res && res.status === 200) {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+        }
+        return res;
+      }).catch(() => cached);
+    })
   );
 });
