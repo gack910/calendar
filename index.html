@@ -541,7 +541,7 @@
 // ════════════════════════════════
 //  ★ ここに自分のクライアントIDを貼る
 // ════════════════════════════════
-const CLIENT_ID = '66585014637-9drc6lc2o28um48gq7o6k3iku296o2vb.apps.googleusercontent.com';
+const CLIENT_ID = 'YOUR_CLIENT_ID.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/calendar';
 const DISCOVERY = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
 
@@ -581,38 +581,6 @@ function loadToken() {
 }
 function clearToken() {
   try { localStorage.removeItem(TOKEN_KEY); } catch(e) {}
-}
-
-// ── ローカルキャッシュ（IndexedDB）でカレンダーデータを永続化 ──
-const CAL_DB = 'mycal-data', CAL_VER = 1, CAL_STORE = 'events';
-let calDb = null;
-
-function openCalDB() {
-  return new Promise((res, rej) => {
-    if (calDb) return res(calDb);
-    const req = indexedDB.open(CAL_DB, CAL_VER);
-    req.onupgradeneeded = e => e.target.result.createObjectStore(CAL_STORE, {keyPath:'key'});
-    req.onsuccess = e => { calDb = e.target.result; res(calDb); };
-    req.onerror = () => rej(req.error);
-  });
-}
-async function saveCalCache(key, data) {
-  try {
-    const d = await openCalDB();
-    const tx = d.transaction(CAL_STORE, 'readwrite');
-    tx.objectStore(CAL_STORE).put({key, data, savedAt: Date.now()});
-  } catch(e) {}
-}
-async function loadCalCache(key) {
-  try {
-    const d = await openCalDB();
-    return new Promise((res) => {
-      const tx = d.transaction(CAL_STORE, 'readonly');
-      const req = tx.objectStore(CAL_STORE).get(key);
-      req.onsuccess = () => res(req.result?.data || null);
-      req.onerror = () => res(null);
-    });
-  } catch(e) { return null; }
 }
 
 // ── GAPI ──
@@ -831,36 +799,30 @@ function isHoliday(holidays, y, m, d) {
 // ── API ──
 async function fetchEvents(year, month) {
   const key = `ev-${year}-${month}`;
+  // メモリキャッシュがあればそれを使う
   if (eventsCache[key]) return eventsCache[key];
-  // IndexedDBキャッシュから読む
-  const cached = await loadCalCache(key);
-  if (cached) { eventsCache[key] = cached; return cached; }
-  // キャッシュなし→APIから取得
-  return await fetchEventsFromAPI(year, month);
-}
-
-async function fetchEventsFromAPI(year, month) {
-  const key = `ev-${year}-${month}`;
+  // APIから取得
   const timeMin = new Date(year, month, 1).toISOString();
   const timeMax = new Date(year, month+1, 1).toISOString();
   try {
+    const token = gapi.client.getToken();
+    if (!token) return [];
     const res = await gapi.client.calendar.events.list({
       calendarId: 'primary', timeMin, timeMax,
       singleEvents: true, orderBy: 'startTime', maxResults: 2500
     });
     const data = res.result.items || [];
     eventsCache[key] = data;
-    await saveCalCache(key, data);
     return data;
-  } catch(e) { return eventsCache[key] || []; }
-}
-async function fetchEventsRange(start, end) {
-  const token = gapi.client.getToken();
-  if (!token) {
-    // トークンなし→サイレント再認証してから再試行
-    silentSignIn();
+  } catch(e) {
+    if (e?.status === 401) silentSignIn();
     return [];
   }
+}
+
+async function fetchEventsRange(start, end) {
+  const token = gapi.client.getToken();
+  if (!token) { silentSignIn(); return []; }
   try {
     const res = await gapi.client.calendar.events.list({
       calendarId: 'primary',
@@ -869,7 +831,6 @@ async function fetchEventsRange(start, end) {
     });
     return res.result.items || [];
   } catch(e) {
-    // 401の場合はサイレント再認証
     if (e?.status === 401) silentSignIn();
     return [];
   }
@@ -1353,8 +1314,13 @@ document.getElementById('modal-delete-btn').addEventListener('click', async () =
   try {
     await apiDelete(currentEvent.id);
     document.getElementById('modal-bg').classList.remove('open');
-    eventsCache = {}; loadCurrentView();
-  } catch(e) { alert('削除に失敗しました: ' + e.message); }
+    eventsCache = {};
+    holidayCache = {};
+    await loadCurrentView();
+  } catch(e) {
+    const msg = e?.result?.error?.message || e?.message || JSON.stringify(e) || '不明なエラー';
+    alert('削除に失敗しました: ' + msg);
+  }
 });
 
 // ── フォームモーダル ──
@@ -1463,7 +1429,9 @@ document.getElementById('form-save-btn').addEventListener('click', async () => {
       await apiInsert(body);
     }
     document.getElementById('form-modal-bg').classList.remove('open');
-    eventsCache = {}; loadCurrentView();
+    eventsCache = {}; // 全キャッシュクリア
+    holidayCache = {};
+    await loadCurrentView();
   } catch(e) {
     const msg = e?.result?.error?.message || e?.message || JSON.stringify(e) || '不明なエラー';
     alert('保存に失敗しました: ' + msg);
