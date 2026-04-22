@@ -541,7 +541,7 @@
 // ════════════════════════════════
 //  ★ ここに自分のクライアントIDを貼る
 // ════════════════════════════════
-const CLIENT_ID = '66585014637-9drc6lc2o28um48gq7o6k3iku296o2vb.apps.googleusercontent.com';
+const CLIENT_ID = 'YOUR_CLIENT_ID.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/calendar';
 const DISCOVERY = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
 
@@ -855,6 +855,12 @@ async function fetchEventsFromAPI(year, month) {
   } catch(e) { return eventsCache[key] || []; }
 }
 async function fetchEventsRange(start, end) {
+  const token = gapi.client.getToken();
+  if (!token) {
+    // トークンなし→サイレント再認証してから再試行
+    silentSignIn();
+    return [];
+  }
   try {
     const res = await gapi.client.calendar.events.list({
       calendarId: 'primary',
@@ -862,7 +868,11 @@ async function fetchEventsRange(start, end) {
       singleEvents: true, orderBy: 'startTime', maxResults: 500
     });
     return res.result.items || [];
-  } catch(e) { return []; }
+  } catch(e) {
+    // 401の場合はサイレント再認証
+    if (e?.status === 401) silentSignIn();
+    return [];
+  }
 }
 function eventsForDate(allEvents, d, m, y) {
   return allEvents.filter(ev => {
@@ -1454,7 +1464,10 @@ document.getElementById('form-save-btn').addEventListener('click', async () => {
     }
     document.getElementById('form-modal-bg').classList.remove('open');
     eventsCache = {}; loadCurrentView();
-  } catch(e) { alert('保存に失敗しました: ' + e.message); }
+  } catch(e) {
+    const msg = e?.result?.error?.message || e?.message || JSON.stringify(e) || '不明なエラー';
+    alert('保存に失敗しました: ' + msg);
+  }
 });
 
 function toLocalDatetimeInput(s) {
