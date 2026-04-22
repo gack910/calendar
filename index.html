@@ -541,7 +541,7 @@
 // ════════════════════════════════
 //  ★ ここに自分のクライアントIDを貼る
 // ════════════════════════════════
-const CLIENT_ID = '66585014637-9drc6lc2o28um48gq7o6k3iku296o2vb.apps.googleusercontent.com';
+const CLIENT_ID = 'YOUR_CLIENT_ID.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/calendar';
 const DISCOVERY = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
 
@@ -794,7 +794,7 @@ let holidayCache = {}; // "YYYY-M" => Map<"YYYY-MM-DD", name>
 
 async function fetchHolidays(year, month) {
   const key = `${year}-${month}`;
-  if (holidayCache[key]) return holidayCache[key];
+  if (holidayCache[key] && (holidayCache[key] instanceof Map)) return holidayCache[key];
   const timeMin = new Date(year, month, 1).toISOString();
   const timeMax = new Date(year, month+1, 1).toISOString();
   try {
@@ -808,12 +808,20 @@ async function fetchHolidays(year, month) {
     });
     holidayCache[key] = map;
     return map;
-  } catch(e) { return new Map(); }
+  } catch(e) {
+    const empty = new Map();
+    holidayCache[key] = empty;
+    return empty;
+  }
 }
 
 function getHolidayName(holidays, y, m, d) {
   const key = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-  return holidays.get(key) || null;
+  if (!holidays) return null;
+  // MapとSet両方に対応
+  if (typeof holidays.get === 'function') return holidays.get(key) || null;
+  if (typeof holidays.has === 'function') return holidays.has(key) ? '祝日' : null;
+  return null;
 }
 
 function isHoliday(holidays, y, m, d) {
