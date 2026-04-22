@@ -405,7 +405,7 @@
   <div class="auth-card">
     <h1>マイカレンダー</h1>
     <p>Googleアカウントでログインして<br>カレンダーを表示します</p>
-    <button class="google-btn" id="sign-in-btn">
+    <button class="google-btn" id="sign-in-btn" onclick="handleSignIn()">
       <svg viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
         <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
         <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
@@ -541,7 +541,7 @@
 // ════════════════════════════════
 //  ★ ここに自分のクライアントIDを貼る
 // ════════════════════════════════
-const CLIENT_ID = '66585014637-9drc6lc2o28um48gq7o6k3iku296o2vb.apps.googleusercontent.com';
+const CLIENT_ID = 'YOUR_CLIENT_ID.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/calendar';
 const DISCOVERY = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
 
@@ -634,10 +634,9 @@ function gisInit() {
       }
       saveToken(resp);
       gapi.client.setToken(resp);
-      // 認証完了後にキャッシュクリアして最新データ取得
       eventsCache = {};
       holidayCache = {};
-      loadCurrentView();
+      showApp();
     }
   });
   gisLoaded = true;
@@ -646,28 +645,30 @@ function gisInit() {
 
 function maybeReady() {
   if (!gapiLoaded || !gisLoaded) return;
-
   const saved = loadToken();
   if (saved) {
-    // 有効なトークンあり→そのまま使う
     gapi.client.setToken(saved);
     showApp();
   } else {
-    // トークンなし or 期限切れ→サイレント再認証を試みる
-    showApp(); // まずキャッシュ表示
+    showApp();
     silentSignIn();
   }
-
-  document.getElementById('sign-in-btn').addEventListener('click', () => {
-    tokenClient.requestAccessToken({prompt: 'consent'});
-  });
 }
 
 function silentSignIn() {
   try {
     tokenClient.requestAccessToken({prompt: ''});
   } catch(e) {
-    // 失敗してもキャッシュ表示は継続
+    document.getElementById('auth-overlay').style.display = 'flex';
+    document.getElementById('app').classList.remove('visible');
+  }
+}
+
+function handleSignIn() {
+  if (tokenClient) {
+    tokenClient.requestAccessToken({prompt: 'consent'});
+  } else {
+    setTimeout(handleSignIn, 300);
   }
 }
 window.gapiInit = gapiInit;
