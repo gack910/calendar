@@ -1,4 +1,4 @@
-const CACHE = 'mycal-v15';
+const CACHE = 'mycal-v17';
 const ASSETS = [
   './',
   './index.html',

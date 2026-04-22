@@ -541,7 +541,7 @@
 // ════════════════════════════════
 //  ★ ここに自分のクライアントIDを貼る
 // ════════════════════════════════
-const CLIENT_ID = '66585014637-9drc6lc2o28um48gq7o6k3iku296o2vb.apps.googleusercontent.com';
+const CLIENT_ID = 'YOUR_CLIENT_ID.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/calendar';
 const DISCOVERY = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
 
@@ -1160,6 +1160,21 @@ async function loadWeek() {
   evs.forEach((ev, idx) => {
     if (ev.start?.date) return;
     const s = new Date(ev.start.dateTime);
+    const e = new Date(ev.end.dateTime);
+    const slot = scroll.querySelector(`.wv-slot[data-y="${s.getFullYear()}"][data-m="${s.getMonth()}"][data-d="${s.getDate()}"][data-h="${s.getHours()}"]`);
+    if (!slot) return;
+    const col = colorForEvent(ev);
+    const h = Math.max((e-s)/60000/60*48, 18);
+    const el = document.createElement('div');
+    el.className = 'wv-event';
+    el.style.cssText = `top:${s.getMinutes()/60*48}px;height:${h}px;background:${col.bg};color:${col.text}`;
+    el.textContent = ev.summary || '（タイトルなし）';
+    el.addEventListener('click', () => showModal(ev));
+    slot.appendChild(el);
+  });
+  scroll.scrollTop = 8 * 48;
+}
+
 async function loadDay() {
   const y = cur.getFullYear(), m = cur.getMonth(), d = cur.getDate();
   document.getElementById('cal-title').textContent = `${m+1}月${d}日（${DOW[new Date(y,m,d).getDay()]}）`;
